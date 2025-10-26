@@ -32,71 +32,83 @@ pnpm add ai-patterns
 ## Quick Start
 
 ```typescript
-import {
-  compose,
-  retryMiddleware,
-  timeoutMiddleware,
-  cacheMiddleware,
-  BackoffStrategy
-} from 'ai-patterns';
+import { retry, timeout, BackoffStrategy } from 'ai-patterns';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
-// Compose multiple patterns together for a robust AI workflow
-const robustAI = compose([
-  timeoutMiddleware({ duration: 10000 }),
-  retryMiddleware({ maxAttempts: 3, backoffStrategy: BackoffStrategy.EXPONENTIAL }),
-  cacheMiddleware({ ttl: 300000 }) // 5 min cache
-]);
-
-// Use it with any AI function
-const result = await robustAI(
-  async (input: { prompt: string }) => {
-    const { text } = await generateText({
-      model: openai('gpt-4-turbo'),
-      prompt: input.prompt,
-      maxRetries: 0 // We handle retries
+// Simple retry with timeout protection
+const result = await retry({
+  execute: async () => {
+    return await timeout({
+      execute: async () => {
+        const { text } = await generateText({
+          model: openai('gpt-4-turbo'),
+          prompt: 'Explain quantum computing',
+          maxRetries: 0
+        });
+        return text;
+      },
+      timeoutMs: 10000
     });
-    return text;
   },
-  { prompt: 'Explain quantum computing' }
-);
+  maxAttempts: 3,
+  backoffStrategy: BackoffStrategy.EXPONENTIAL
+});
 
-console.log(result); // ✅ Fully typed, cached, with retry & timeout
+console.log(result.value);
 ```
 
-## Elegant Composition
+## Advanced Usage
 
-Compose patterns together using functional composition, similar to mathematical function composition. Patterns are applied **right to left** (innermost first):
+### Stateful Patterns
+
+Use `defineCircuitBreaker` and `defineRateLimiter` for patterns that maintain state:
 
 ```typescript
-import {
-  compose,
-  retryMiddleware,
-  timeoutMiddleware,
-  circuitBreakerMiddleware,
-  fallbackMiddleware,
-} from 'ai-patterns';
+import { defineCircuitBreaker, retry, timeout } from 'ai-patterns';
 
-// Build a production-ready AI pipeline
+// Circuit breaker maintains state across calls
+const breaker = defineCircuitBreaker({
+  execute: async (prompt: string) => {
+    return await timeout({
+      execute: async () => {
+        const { text } = await generateText({
+          model: openai('gpt-4-turbo'),
+          prompt,
+          maxRetries: 0
+        });
+        return text;
+      },
+      timeoutMs: 10000
+    });
+  },
+  failureThreshold: 5,
+  resetTimeout: 60000
+});
+
+// Reuse the same instance
+const result1 = await breaker('First prompt');
+const result2 = await breaker('Second prompt');
+console.log(breaker.getState()); // Check circuit state
+```
+
+### Middleware Composition
+
+For complex workflows, use the `compose()` function with middleware:
+
+```typescript
+import { compose, retryMiddleware, timeoutMiddleware } from 'ai-patterns';
+
 const pipeline = compose([
-  fallbackMiddleware({ fallback: async () => getCachedResponse() }),  // 4. Fallback (outermost)
-  circuitBreakerMiddleware({ failureThreshold: 5 }),                  // 3. Circuit breaker
-  timeoutMiddleware({ duration: 10000 }),                             // 2. Timeout
-  retryMiddleware({ maxAttempts: 3 }),                                // 1. Retry (innermost)
+  timeoutMiddleware({ duration: 10000 }),
+  retryMiddleware({ maxAttempts: 3 })
 ]);
 
 const result = await pipeline(
-  async (input) => callAI(input),
-  { prompt: 'Your prompt here' }
+  async (input) => generateText({ model: openai('gpt-4-turbo'), prompt: input }),
+  'Your prompt here'
 );
 ```
-
-**Why composition?**
-- 🎯 **Declarative**: Describe *what* you want, not *how*
-- 🧩 **Composable**: Mix and match patterns freely
-- 📖 **Readable**: Clear, linear flow of transformations
-- 🔒 **Type-Safe**: Full TypeScript inference through the chain
 
 ## Patterns
 
@@ -139,89 +151,6 @@ const result = await pipeline(
 ---
 
 ## Pattern Examples
-
-### compose
-
-Compose multiple patterns together using functional middleware composition. Patterns are applied **right to left** (innermost first).
-
-```typescript
-import {
-  compose,
-  retryMiddleware,
-  timeoutMiddleware,
-  circuitBreakerMiddleware,
-  cacheMiddleware,
-  fallbackMiddleware,
-} from 'ai-patterns';
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
-
-// Build a production-ready AI pipeline
-const robustAI = compose(
-  [
-    // Fallback if everything else fails (outermost)
-    fallbackMiddleware({
-      fallback: async () => "I'm currently unavailable. Please try again later."
-    }),
-
-    // Circuit breaker to prevent cascade failures
-    circuitBreakerMiddleware({
-      failureThreshold: 5,
-      resetTimeout: 60000
-    }),
-
-    // Timeout after 10 seconds
-    timeoutMiddleware({ duration: 10000 }),
-
-    // Retry up to 3 times with exponential backoff
-    retryMiddleware({
-      maxAttempts: 3,
-      backoffStrategy: BackoffStrategy.EXPONENTIAL
-    }),
-
-    // Cache responses for 5 minutes (innermost)
-    cacheMiddleware({
-      ttl: 5 * 60 * 1000,
-      keyFn: (input) => input.prompt
-    }),
-  ],
-  {
-    onStart: () => console.log('Processing request...'),
-    onComplete: (result, duration) => console.log(`✅ Done in ${duration}ms`),
-    onError: (error) => console.error('❌ Pipeline failed:', error)
-  }
-);
-
-// Use the composed pipeline
-const result = await robustAI(
-  async (input: { prompt: string }) => {
-    const { text } = await generateText({
-      model: openai('gpt-4-turbo'),
-      prompt: input.prompt,
-      maxRetries: 0
-    });
-    return text;
-  },
-  { prompt: 'Explain quantum computing' }
-);
-
-console.log(result); // ✅ Fully typed, cached, resilient response
-```
-
-**Available Middleware:**
-- `retryMiddleware` - Retry with backoff strategies
-- `timeoutMiddleware` - Timeout protection
-- `fallbackMiddleware` - Execute fallback functions
-- `circuitBreakerMiddleware` - Circuit breaker pattern
-- `rateLimiterMiddleware` - Rate limiting
-- `cacheMiddleware` - Response caching with TTL
-
-**Composition Benefits:**
-- 🎯 Declarative and readable
-- 🔄 Reusable pipelines
-- 🧩 Mix and match freely
-- 📊 Lifecycle hooks (onStart, onComplete, onError)
-- 🔒 Full type safety
 
 ### retry
 
@@ -287,35 +216,21 @@ console.log(`⏱️  Total delay: ${result.totalDelay}ms`);
 Add time limits to async operations with AbortSignal support.
 
 ```typescript
-import { timeout, TimeoutDurations } from 'ai-patterns';
-import { anthropic } from '@ai-sdk/anthropic';
+import { timeout } from 'ai-patterns';
 import { generateText } from 'ai';
 
-interface AIResult {
-  text: string;
-  finishReason: string;
-}
-
-// Add timeout to long-running AI generation
-const result = await timeout<AIResult>({
+const result = await timeout({
   execute: async () => {
-    const response = await generateText({
-      model: anthropic('claude-3-5-sonnet-20241022'),
-      prompt: 'Write a detailed essay about the history of computing (2000 words)'
+    const { text } = await generateText({
+      model: openai('gpt-4-turbo'),
+      prompt: 'Write a detailed essay'
     });
-
-    return {
-      text: response.text,
-      finishReason: response.finishReason
-    };
+    return text;
   },
-  timeoutMs: TimeoutDurations.LONG, // 30 seconds max
-  onTimeout: () => {
-    console.log('AI generation timed out');
-  }
+  timeoutMs: 30000 // 30 seconds max
 });
 
-console.log(result.value.text.length); // ✅ Fully typed
+console.log(result);
 ```
 
 **[📖 Full timeout documentation](./docs/patterns/timeout.md)**

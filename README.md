@@ -11,7 +11,7 @@ We provide developers with battle-tested tools for resilient AI workflows: retry
 ## Features
 
 ✨ **15 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, and more
-🎨 **Elegant Composition** - Functional middleware-based composition for complex workflows
+🎨 **Elegant Composition** - Compose patterns together for complex workflows
 🔒 **Type-Safe** - Full TypeScript support with generics and strict mode
 🧩 **Composable** - Patterns work together seamlessly for robust workflows
 📊 **Observable** - Built-in lifecycle callbacks for monitoring and debugging
@@ -116,7 +116,7 @@ const result = await pipeline(
 
 | Pattern | Description | Use Case | Docs |
 |---------|-------------|----------|------|
-| **[compose](#compose)** | Functional middleware-based composition | Complex AI pipelines | - |
+| **[compose](#compose)** | Functional pattern composition | Complex AI pipelines | - |
 | **[retry](#retry)** | Automatic retry with exponential backoff | Unstable APIs, network issues | [📖](./docs/patterns/retry.md) |
 | **[timeout](#timeout)** | Time limits with AbortSignal support | Long-running operations | [📖](./docs/patterns/timeout.md) |
 | **[fallback](#fallback)** | Execute alternatives on failure | Multi-provider failover | [📖](./docs/patterns/fallback.md) |

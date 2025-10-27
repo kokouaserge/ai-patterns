@@ -153,6 +153,7 @@ describe('rate-limiter', () => {
 
       // Advance time
       vi.advanceTimersByTime(1000);
+      await vi.runAllTimersAsync();
 
       const result = await waitPromise;
       expect(result.allowed).toBe(true);

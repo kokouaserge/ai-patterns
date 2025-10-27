@@ -11,10 +11,10 @@ import { SagaOptions, SagaResult, SagaStep } from "../types/saga";
  */
 interface SagaInternalOptions<TContext = any> {
   logger?: Logger;
-  onStepStart?: (step: SagaStep<TContext>, index: number) => void;
-  onStepComplete?: (step: SagaStep<TContext>, index: number, result: unknown) => void;
-  onStepError?: (step: SagaStep<TContext>, index: number, error: Error) => void;
-  onCompensate?: (step: SagaStep<TContext>, index: number) => void;
+  onStepStart?: (stepName: string, index: number) => void;
+  onStepComplete?: (stepName: string, result: unknown) => void;
+  onStepFailed?: (stepName: string, error: Error) => void;
+  onCompensate?: (stepName: string) => void;
   onComplete?: (context: TContext) => void;
   onFailure?: (error: Error, context: TContext) => void;
 }
@@ -85,7 +85,7 @@ export class Saga<TContext = any> {
         this.logger.info(`Step ${i + 1}/${this.steps.length}: ${step.name}`);
 
         if (this.options.onStepStart) {
-          this.options.onStepStart(step, i);
+          this.options.onStepStart(step.name, i);
         }
 
         try {
@@ -100,7 +100,7 @@ export class Saga<TContext = any> {
           this.logger.info(`Step ${i + 1} "${step.name}" completed`);
 
           if (this.options.onStepComplete) {
-            this.options.onStepComplete(step, i, result);
+            this.options.onStepComplete(step.name, result);
           }
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
@@ -109,8 +109,8 @@ export class Saga<TContext = any> {
             error: err.message,
           });
 
-          if (this.options.onStepError) {
-            this.options.onStepError(step, i, err);
+          if (this.options.onStepFailed) {
+            this.options.onStepFailed(step.name, err);
           }
 
           // Start compensation
@@ -191,7 +191,7 @@ export class Saga<TContext = any> {
         this.logger.info(`Compensating step ${index + 1}: ${step.name}`);
 
         if (this.options.onCompensate) {
-          this.options.onCompensate(step, index);
+          this.options.onCompensate(step.name);
         }
 
         await step.compensate(this.context, result);
@@ -265,7 +265,7 @@ export async function executeSaga<TContext>(
     logger,
     onStepStart,
     onStepComplete,
-    onStepError,
+    onStepFailed,
     onCompensate,
     onComplete,
     onFailure,
@@ -275,7 +275,7 @@ export async function executeSaga<TContext>(
     logger,
     onStepStart,
     onStepComplete,
-    onStepError,
+    onStepFailed,
     onCompensate,
     onComplete,
     onFailure,

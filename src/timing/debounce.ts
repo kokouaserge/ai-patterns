@@ -24,13 +24,16 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
 ): DebouncedFunction<TArgs, TResult> {
   const {
     execute: fn,
-    wait = 300,
+    wait,
     maxWait,
     leading = false,
     logger = defaultLogger,
     onDebounced,
     onExecute,
   } = options;
+
+  // Support both 'wait' and 'delayMs' for compatibility
+  const delay = wait ?? (options as any).delayMs ?? 300;
 
   let timeoutId: NodeJS.Timeout | null = null;
   let maxWaitTimeoutId: NodeJS.Timeout | null = null;
@@ -39,15 +42,18 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
   let lastThis: any = null;
   let result: TResult | undefined;
   let pending = false;
+  let pendingResolvers: Array<(value: TResult) => void> = [];
 
   const invokeFunction = async (): Promise<TResult> => {
     const args = lastArgs!;
     const thisArg = lastThis;
+    const resolvers = [...pendingResolvers];
 
     lastArgs = null;
     lastThis = null;
     lastInvokeTime = Date.now();
     pending = false;
+    pendingResolvers = [];
 
     if (onExecute) {
       onExecute(...args);
@@ -55,6 +61,10 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
 
     logger.info("Executing debounced function");
     result = await fn.apply(thisArg, args);
+
+    // Resolve all pending promises
+    resolvers.forEach(resolve => resolve(result!));
+
     return result;
   };
 
@@ -91,11 +101,15 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
     }
 
     return new Promise<TResult>((resolve) => {
+      // Add this resolver to pending resolvers
+      pendingResolvers.push(resolve);
+
+      // Set timeout for this debounced call (always create new timeout after cancel)
       timeoutId = setTimeout(async () => {
+        timeoutId = null;
         cancelMaxWaitTimer();
-        const result = await invokeFunction();
-        resolve(result);
-      }, wait);
+        await invokeFunction();
+      }, delay);
 
       // Max wait timer
       if (maxWait !== undefined && !maxWaitTimeoutId) {
@@ -104,9 +118,9 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
 
         if (timeToMaxWait > 0) {
           maxWaitTimeoutId = setTimeout(async () => {
+            maxWaitTimeoutId = null;
             cancelTimer();
-            const result = await invokeFunction();
-            resolve(result);
+            await invokeFunction();
           }, timeToMaxWait);
         }
       }
@@ -119,6 +133,7 @@ export function defineDebounce<TArgs extends any[] = any[], TResult = any>(
     lastArgs = null;
     lastThis = null;
     pending = false;
+    pendingResolvers = [];
     logger.info("Debounced function cancelled");
   };
 

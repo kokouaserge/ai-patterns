@@ -90,9 +90,9 @@ export const TimeoutDurations = {
   SHORT: 5000,
 
   /**
-   * Medium timeout - 10 seconds
+   * Medium timeout - 15 seconds
    */
-  MEDIUM: 10000,
+  MEDIUM: 15000,
 
   /**
    * Long timeout - 30 seconds

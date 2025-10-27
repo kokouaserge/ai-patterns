@@ -263,24 +263,20 @@ export class RateLimiter<TResult = any, TArgs extends any[] = any[]> {
         this.options.onLimitReached(retryAfter);
       }
 
-      throw new PatternError(
-        `Rate limit exceeded. Retry in ${Math.ceil(retryAfter / 1000)}s`,
-        ErrorCode.RATE_LIMIT_EXCEEDED,
-        undefined,
-        {
-          retryAfter,
-          retryInSeconds: Math.ceil(retryAfter / 1000),
-        }
-      );
+      return {
+        allowed: false,
+        retryAfter,
+        remaining: 0,
+      };
     }
 
     const value = await this.fn(...args);
-    const resetAt = Date.now() + (this.options.windowMs ?? 60000);
 
     return {
+      allowed: true,
       value,
       remaining,
-      resetAt,
+      retryAfter: 0,
     };
   }
 
@@ -289,24 +285,24 @@ export class RateLimiter<TResult = any, TArgs extends any[] = any[]> {
    */
   async executeWithWait(...args: TArgs): Promise<RateLimitResult<TResult>> {
     const logger = this.options.logger ?? defaultLogger;
+    const { allowed, retryAfter, remaining } = await this.limiter.acquire();
 
-    while (true) {
-      const { allowed, retryAfter, remaining } = await this.limiter.acquire();
+    if (allowed) {
+      const value = await this.fn(...args);
 
-      if (allowed) {
-        const value = await this.fn(...args);
-        const resetAt = Date.now() + (this.options.windowMs ?? 60000);
-
-        return {
-          value,
-          remaining,
-          resetAt,
-        };
-      }
-
-      logger.info(`Rate limit reached, waiting ${retryAfter}ms`);
-      await new Promise((resolve) => setTimeout(resolve, retryAfter));
+      return {
+        allowed: true,
+        value,
+        remaining,
+        retryAfter: 0,
+      };
     }
+
+    logger.info(`Rate limit reached, waiting ${retryAfter}ms`);
+    await new Promise((resolve) => setTimeout(resolve, retryAfter));
+
+    // Recursively retry after waiting
+    return this.executeWithWait(...args);
   }
 
   /**

@@ -8,7 +8,7 @@ import { BulkheadOptions, BulkheadResult, BulkheadStats } from "../types/bulkhea
 
 interface QueuedRequest<T> {
   execute: () => Promise<T>;
-  resolve: (value: BulkheadResult<T>) => void;
+  resolve: (value: T) => void;
   reject: (error: Error) => void;
   queuedAt: number;
 }
@@ -25,17 +25,28 @@ class Bulkhead<TResult = any> {
   constructor(
     private readonly fn: AsyncFunction<TResult>,
     private readonly options: Omit<BulkheadOptions<TResult>, "execute">
-  ) {}
+  ) {
+    const maxConcurrent = options.maxConcurrent ?? 10;
+    if (maxConcurrent <= 0) {
+      throw new PatternError(
+        `maxConcurrent must be > 0, received: ${maxConcurrent}`,
+        ErrorCode.INVALID_CONFIGURATION
+      );
+    }
+  }
 
-  async execute(): Promise<BulkheadResult<TResult>> {
+  async execute(): Promise<TResult> {
     const {
       maxConcurrent = 10,
-      maxQueue = 100,
+      maxQueue: maxQueueOpt,
+      maxQueued,
       queueTimeout,
       logger = defaultLogger,
       onQueued,
       onQueueFull,
     } = this.options;
+
+    const maxQueue = maxQueued ?? maxQueueOpt ?? 100;
 
     const queuedAt = Date.now();
 
@@ -57,7 +68,7 @@ class Bulkhead<TResult = any> {
     }
 
     // Add to queue
-    return new Promise<BulkheadResult<TResult>>((resolve, reject) => {
+    return new Promise<TResult>((resolve, reject) => {
       const request: QueuedRequest<TResult> = {
         execute: () => this.fn(),
         resolve,
@@ -91,7 +102,7 @@ class Bulkhead<TResult = any> {
     });
   }
 
-  private async executeNow(queuedAt: number): Promise<BulkheadResult<TResult>> {
+  private async executeNow(queuedAt: number): Promise<TResult> {
     const { logger = defaultLogger } = this.options;
 
     this.concurrent++;
@@ -107,11 +118,7 @@ class Bulkhead<TResult = any> {
       const executionTime = Date.now() - executionStart;
       this.completed++;
 
-      return {
-        value,
-        queueTime: executionStart - queuedAt,
-        executionTime,
-      };
+      return value;
     } finally {
       this.concurrent--;
       this.processQueue();
@@ -136,6 +143,8 @@ class Bulkhead<TResult = any> {
     return {
       concurrent: this.concurrent,
       queueSize: this.queue.length,
+      activeCount: this.concurrent,
+      queuedCount: this.queue.length,
       completed: this.completed,
       rejected: this.rejected,
     };
@@ -148,13 +157,13 @@ class Bulkhead<TResult = any> {
 export function defineBulkhead<TResult = any>(
   options: BulkheadOptions<TResult>
 ): {
-  (): Promise<BulkheadResult<TResult>>;
+  (): Promise<TResult>;
   getStats(): BulkheadStats;
 } {
   const { execute: fn, ...rest } = options;
   const instance = new Bulkhead(fn, rest);
 
-  const callable = async (): Promise<BulkheadResult<TResult>> => {
+  const callable = async (): Promise<TResult> => {
     return await instance.execute();
   };
 

@@ -229,6 +229,26 @@ export interface HumanInTheLoopOptions<TInput = any, TOutput = any> {
 }
 
 /**
+ * Result from human-in-the-loop pattern
+ */
+export interface HumanInTheLoopResult<TOutput = any> {
+  /**
+   * The final output value
+   */
+  value: TOutput;
+
+  /**
+   * Whether escalation occurred
+   */
+  escalated: boolean;
+
+  /**
+   * Escalation reason (if escalated)
+   */
+  escalationReason?: EscalationReason;
+}
+
+/**
  * Common escalation rules for typical scenarios
  */
 export const CommonEscalationRules = {
@@ -246,15 +266,40 @@ export const CommonEscalationRules = {
   }),
 
   /**
-   * Escalate if sensitive keywords detected
+   * Escalate if sensitive keywords detected in input or output
    */
-  sensitiveKeywords: (keywords: string[]): EscalationRule<string, any> => ({
+  sensitiveKeywords: (keywords: string[]): EscalationRule<any, any> => ({
     name: "sensitive-keywords",
-    shouldEscalate: (input) => {
-      const inputLower = input.toLowerCase();
-      return keywords.some((keyword) =>
-        inputLower.includes(keyword.toLowerCase())
-      );
+    shouldEscalate: (input, output) => {
+      // Check input if it's a string
+      if (typeof input === 'string') {
+        const inputLower = input.toLowerCase();
+        if (keywords.some((keyword) => inputLower.includes(keyword.toLowerCase()))) {
+          return true;
+        }
+      }
+
+      // Check output if it exists
+      if (output) {
+        // Check all string properties of output
+        const checkObject = (obj: any): boolean => {
+          for (const value of Object.values(obj)) {
+            if (typeof value === 'string') {
+              const valueLower = value.toLowerCase();
+              if (keywords.some((keyword) => valueLower.includes(keyword.toLowerCase()))) {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        if (typeof output === 'object') {
+          return checkObject(output);
+        }
+      }
+
+      return false;
     },
     reason: EscalationReason.KEYWORD_DETECTED,
     priority: 10,

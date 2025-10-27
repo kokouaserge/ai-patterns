@@ -31,8 +31,9 @@ interface CircuitBreakerInternalOptions {
  */
 export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
   private state: CircuitState = CircuitState.CLOSED;
-  private failureCount = 0;
-  private successCount = 0;
+  private consecutiveFailures = 0;
+  private totalFailures = 0;
+  private totalSuccesses = 0;
   private totalCalls = 0;
   private lastFailureTime: number | null = null;
   private lastSuccessTime: number | null = null;
@@ -150,7 +151,7 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
    * Handle successful execution
    */
   private onSuccess(): void {
-    this.successCount++;
+    this.totalSuccesses++;
     this.lastSuccessTime = Date.now();
 
     if (this.state === CircuitState.HALF_OPEN) {
@@ -160,12 +161,12 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
       if (this.halfOpenAttempts >= this.halfOpenMaxAttempts) {
         this.logger.info("Circuit closed after successful half-open tests");
         this.changeState(CircuitState.CLOSED);
-        this.failureCount = 0;
+        this.consecutiveFailures = 0;
         this.halfOpenAttempts = 0;
       }
     } else if (this.state === CircuitState.CLOSED) {
-      // Reset failure count on success
-      this.failureCount = 0;
+      // Reset consecutive failure count on success
+      this.consecutiveFailures = 0;
     }
   }
 
@@ -181,7 +182,8 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
       return;
     }
 
-    this.failureCount++;
+    this.consecutiveFailures++;
+    this.totalFailures++;
 
     if (this.state === CircuitState.HALF_OPEN) {
       // Any failure in half-open reopens circuit
@@ -191,9 +193,9 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
       this.nextAttemptTime = Date.now() + this.openDuration;
     } else if (this.state === CircuitState.CLOSED) {
       // Check if threshold reached
-      if (this.failureCount >= this.failureThreshold) {
+      if (this.consecutiveFailures >= this.failureThreshold) {
         this.logger.warn(
-          `Failure threshold reached (${this.failureCount}/${this.failureThreshold}), opening circuit`
+          `Failure threshold reached (${this.consecutiveFailures}/${this.failureThreshold}), opening circuit`
         );
         this.changeState(CircuitState.OPEN);
         this.nextAttemptTime = Date.now() + this.openDuration;
@@ -234,8 +236,8 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
   getStats(): CircuitBreakerStats {
     return {
       state: this.state,
-      failureCount: this.failureCount,
-      successCount: this.successCount,
+      failureCount: this.totalFailures,
+      successCount: this.totalSuccesses,
       totalCalls: this.totalCalls,
       lastFailureTime: this.lastFailureTime,
       lastSuccessTime: this.lastSuccessTime,
@@ -247,8 +249,9 @@ export class CircuitBreaker<TResult = any, TArgs extends any[] = any[]> {
    */
   reset(): void {
     this.state = CircuitState.CLOSED;
-    this.failureCount = 0;
-    this.successCount = 0;
+    this.consecutiveFailures = 0;
+    this.totalFailures = 0;
+    this.totalSuccesses = 0;
     this.halfOpenAttempts = 0;
     this.nextAttemptTime = 0;
     this.logger.info("Circuit reset");

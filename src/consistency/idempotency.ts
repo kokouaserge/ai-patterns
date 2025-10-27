@@ -251,6 +251,30 @@ export class Idempotency<TResult = any, TArgs extends any[] = any[]> {
 }
 
 /**
+ * Global shared store for idempotent function calls
+ */
+const globalIdempotencyStore = new InMemoryStore<any>();
+globalIdempotencyStore.startCleanup();
+
+/**
+ * Global pending requests map to handle concurrent requests
+ */
+const globalPendingRequests = new Map<string, Promise<any>>();
+
+/**
+ * Reset the global idempotency store (useful for testing)
+ */
+export function resetGlobalIdempotencyStore(): void {
+  // Clear all entries by creating a new store
+  const newStore = new InMemoryStore<any>();
+  newStore.startCleanup();
+  // Copy the new store's internal state to the global store
+  // Since InMemoryStore doesn't expose a clear method, we need to manually clear
+  (globalIdempotencyStore as any).store = new Map();
+  globalPendingRequests.clear();
+}
+
+/**
  * Create idempotent function with single parameter API
  */
 export async function idempotent<TResult = any>(
@@ -280,7 +304,7 @@ export async function idempotent<TResult = any>(
     );
   }
 
-  const idempotencyStore = store ?? new InMemoryStore<TResult>();
+  const idempotencyStore = store ?? (globalIdempotencyStore as IdempotencyStore<TResult>);
   const cacheTtl = ttl ?? 3600000;
 
   logger.debug(`Idempotency key: ${idempotencyKey}`);
@@ -299,15 +323,13 @@ export async function idempotent<TResult = any>(
       await idempotencyStore.set(idempotencyKey, cachedRecord);
 
       if (onCacheHit) {
-        onCacheHit(idempotencyKey, cachedRecord);
+        onCacheHit(idempotencyKey);
       }
 
       return cachedRecord.result;
     } else if (cachedRecord.status === IdempotencyStatus.FAILED) {
       logger.warn(`Previous execution failed for ${idempotencyKey}`);
-      if (cachedRecord.error) {
-        throw cachedRecord.error;
-      }
+      // Retry on previous failure by continuing to execute
     }
   }
 
@@ -315,44 +337,62 @@ export async function idempotent<TResult = any>(
     onCacheMiss(idempotencyKey);
   }
 
-  // Execute the function
-  try {
-    logger.info(`Executing operation for ${idempotencyKey}`);
-    const result = await fn();
-
-    const completedRecord: IdempotencyRecord<TResult> = {
-      key: idempotencyKey,
-      result,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + cacheTtl,
-      status: IdempotencyStatus.COMPLETED,
-      hitCount: 0,
-    };
-
-    await idempotencyStore.set(idempotencyKey, completedRecord);
-    logger.info(`Operation completed for ${idempotencyKey}`);
-
-    return result;
-  } catch (error) {
-    const err = error instanceof Error ? error : new Error(String(error));
-
-    const failedRecord: IdempotencyRecord<TResult> = {
-      key: idempotencyKey,
-      result: null as any,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + cacheTtl,
-      status: IdempotencyStatus.FAILED,
-      error: err,
-      hitCount: 0,
-    };
-
-    await idempotencyStore.set(idempotencyKey, failedRecord);
-    logger.error(`Operation failed for ${idempotencyKey}`, {
-      error: err.message,
-    });
-
-    throw err;
+  // Check if there's already a pending request for this key
+  const pendingRequest = globalPendingRequests.get(idempotencyKey);
+  if (pendingRequest) {
+    logger.info(`Waiting for pending request for ${idempotencyKey}`);
+    return await pendingRequest;
   }
+
+  // Create execution promise
+  const executionPromise = (async () => {
+    try {
+      logger.info(`Executing operation for ${idempotencyKey}`);
+      const result = await fn();
+
+      const completedRecord: IdempotencyRecord<TResult> = {
+        key: idempotencyKey,
+        result,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + cacheTtl,
+        status: IdempotencyStatus.COMPLETED,
+        hitCount: 0,
+      };
+
+      await idempotencyStore.set(idempotencyKey, completedRecord);
+      logger.info(`Operation completed for ${idempotencyKey}`);
+
+      return result;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+
+      const failedRecord: IdempotencyRecord<TResult> = {
+        key: idempotencyKey,
+        result: null as any,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + cacheTtl,
+        status: IdempotencyStatus.FAILED,
+        error: err,
+        hitCount: 0,
+      };
+
+      await idempotencyStore.set(idempotencyKey, failedRecord);
+      logger.error(`Operation failed for ${idempotencyKey}`, {
+        error: err.message,
+      });
+
+      throw err;
+    } finally {
+      // Remove from pending requests when done
+      globalPendingRequests.delete(idempotencyKey);
+    }
+  })();
+
+  // Store the pending request
+  globalPendingRequests.set(idempotencyKey, executionPromise);
+
+  // Execute and return
+  return await executionPromise;
 }
 
 /**

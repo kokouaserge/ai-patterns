@@ -24,13 +24,16 @@ export function defineThrottle<TArgs extends any[] = any[], TResult = any>(
 ): ThrottledFunction<TArgs, TResult> {
   const {
     execute: fn,
-    interval = 1000,
+    interval,
     leading = true,
-    trailing = false,
+    trailing = true,
     logger = defaultLogger,
     onThrottled,
     onExecute,
   } = options;
+
+  // Support both 'interval' and 'intervalMs' for compatibility
+  const intervalMs = interval ?? (options as any).intervalMs ?? 1000;
 
   let timeoutId: NodeJS.Timeout | null = null;
   let lastInvokeTime = 0;
@@ -62,7 +65,7 @@ export function defineThrottle<TArgs extends any[] = any[], TResult = any>(
     lastArgs = args;
     lastThis = this;
 
-    const shouldInvoke = timeSinceLastInvoke >= interval;
+    const shouldInvoke = timeSinceLastInvoke >= intervalMs;
 
     if (shouldInvoke) {
       if (timeoutId) {
@@ -85,7 +88,7 @@ export function defineThrottle<TArgs extends any[] = any[], TResult = any>(
           timeoutId = null;
           const result = await invokeFunction();
           resolve(result);
-        }, interval - timeSinceLastInvoke);
+        }, intervalMs - timeSinceLastInvoke);
       });
     }
 

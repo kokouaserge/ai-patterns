@@ -38,12 +38,12 @@ export interface FanOutOptions<TInput, TOutput> {
   /**
    * Progress callback
    */
-  onProgress?: (completed: number, total: number, item: TInput) => void;
+  onProgress?: (completed: number, total: number) => void;
 
   /**
-   * Error callback
+   * Error callback for individual items
    */
-  onError?: (error: Error, item: TInput, index: number) => void;
+  onItemError?: (item: TInput, error: Error, index: number) => void;
 }
 
 /**
@@ -56,9 +56,9 @@ export interface FanOutResult<TOutput> {
   results: TOutput[];
 
   /**
-   * Errors by index
+   * Errors (empty array if no errors)
    */
-  errors: Map<number, Error>;
+  errors: Error[];
 
   /**
    * Total number of items processed
@@ -74,6 +74,11 @@ export interface FanOutResult<TOutput> {
    * Number of failures
    */
   errorCount: number;
+
+  /**
+   * Number of failures (alias for errorCount)
+   */
+  failureCount: number;
 
   /**
    * Total duration in ms

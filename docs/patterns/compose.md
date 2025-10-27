@@ -20,13 +20,13 @@ Combine multiple patterns together to create reusable, composable AI workflows.
 The compose pattern allows you to **combine multiple resilience patterns** into a single, reusable function. Instead of nesting patterns deeply, compose them into a clean pipeline.
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns';
 
 // Create a reusable composed function
 const robustAI = compose([
-  fallback({ fallback: () => "Sorry, service unavailable" }),
-  timeout({ duration: 5000 }),
-  retry({ maxAttempts: 3 })
+  fallbackMiddleware({ fallback: () => "Sorry, service unavailable" }),
+  timeoutMiddleware({ duration: 5000 }),
+  retryMiddleware({ maxAttempts: 3 })
 ]);
 
 // Use it anywhere
@@ -61,19 +61,19 @@ npm install ai-patterns
 
 ## Basic Usage
 
-### Step 1: Import compose and patterns
+### Step 1: Import compose and middleware adapters
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns';
 ```
 
 ### Step 2: Create a composed function
 
 ```typescript
 const robustAPI = compose([
-  fallback({ fallback: () => "Fallback response" }),
-  timeout({ duration: 5000 }),
-  retry({ maxAttempts: 3, backoffStrategy: 'exponential' })
+  fallbackMiddleware({ fallback: () => "Fallback response" }),
+  timeoutMiddleware({ duration: 5000 }),
+  retryMiddleware({ maxAttempts: 3, backoffStrategy: 'exponential' })
 ]);
 ```
 
@@ -119,16 +119,16 @@ const pipeline = compose([
 
 ---
 
-## Available Patterns
+## Available Middleware Adapters
 
-You can compose any of these patterns together:
+You can compose any of these middleware adapters together:
 
-### retry
+### retryMiddleware
 
 Automatically retry failed operations with backoff strategies.
 
 ```typescript
-retry({
+retryMiddleware({
   maxAttempts: 3,
   backoffStrategy: 'exponential',
   initialDelay: 1000
@@ -137,12 +137,12 @@ retry({
 
 **[→ Retry Pattern Documentation](./retry.md)**
 
-### timeout
+### timeoutMiddleware
 
 Add timeout protection to operations.
 
 ```typescript
-timeout({
+timeoutMiddleware({
   duration: 5000,
   message: 'Operation timed out'
 })
@@ -150,12 +150,12 @@ timeout({
 
 **[→ Timeout Pattern Documentation](./timeout.md)**
 
-### fallback
+### fallbackMiddleware
 
 Provide fallback values or alternative strategies when operations fail.
 
 ```typescript
-fallback({
+fallbackMiddleware({
   fallback: (input) => `Fallback for: ${input}`,
   shouldFallback: (error) => error.message.includes('timeout')
 })
@@ -163,12 +163,12 @@ fallback({
 
 **[→ Fallback Pattern Documentation](./fallback.md)**
 
-### circuitBreaker
+### circuitBreakerMiddleware
 
 Prevent cascading failures with circuit breaker pattern.
 
 ```typescript
-circuitBreaker({
+circuitBreakerMiddleware({
   failureThreshold: 5,
   resetTimeout: 60000
 })
@@ -176,12 +176,12 @@ circuitBreaker({
 
 **[→ Circuit Breaker Pattern Documentation](./circuit-breaker.md)**
 
-### rateLimiter
+### rateLimiterMiddleware
 
 Control request rate to avoid overwhelming services.
 
 ```typescript
-rateLimiter({
+rateLimiterMiddleware({
   requests: 10,
   window: 1000
 })
@@ -189,12 +189,12 @@ rateLimiter({
 
 **[→ Rate Limiter Pattern Documentation](./rate-limiter.md)**
 
-### cache
+### cacheMiddleware
 
 Cache expensive operations with TTL support.
 
 ```typescript
-cache({
+cacheMiddleware({
   ttl: 300000,
   keyFn: (input) => JSON.stringify(input)
 })
@@ -209,17 +209,17 @@ cache({
 ### Example 1: Production AI Pipeline
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
 // Create a robust AI function
 const robustAI = compose([
-  fallback({
+  fallbackMiddleware({
     fallback: () => "I'm having trouble right now. Please try again later."
   }),
-  timeout({ duration: 10000 }),
-  retry({
+  timeoutMiddleware({ duration: 10000 }),
+  retryMiddleware({
     maxAttempts: 3,
     backoffStrategy: 'exponential',
     initialDelay: 1000
@@ -245,13 +245,13 @@ console.log(result);
 ### Example 2: Multi-Provider Fallback
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 
 const multiProviderAI = compose([
-  fallback({
+  fallbackMiddleware({
     fallback: async (prompt: string) => {
       // Fallback to Claude if OpenAI fails
       const { text } = await generateText({
@@ -262,8 +262,8 @@ const multiProviderAI = compose([
       return text;
     }
   }),
-  timeout({ duration: 8000 }),
-  retry({ maxAttempts: 2 })
+  timeoutMiddleware({ duration: 8000 }),
+  retryMiddleware({ maxAttempts: 2 })
 ]);
 
 const result = await multiProviderAI(
@@ -282,17 +282,17 @@ const result = await multiProviderAI(
 ### Example 3: API with Circuit Breaker
 
 ```typescript
-import { compose, retry, timeout, circuitBreaker } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, circuitBreakerMiddleware } from 'ai-patterns';
 
 const robustAPI = compose([
-  circuitBreaker({
+  circuitBreakerMiddleware({
     failureThreshold: 5,
     resetTimeout: 60000,
     onOpen: () => console.log('Circuit breaker opened'),
     onClose: () => console.log('Circuit breaker closed')
   }),
-  timeout({ duration: 5000 }),
-  retry({ maxAttempts: 3 })
+  timeoutMiddleware({ duration: 5000 }),
+  retryMiddleware({ maxAttempts: 3 })
 ]);
 
 // Use the same composed function for all API calls
@@ -310,17 +310,17 @@ const posts = await robustAPI(
 ### Example 4: Rate-Limited AI Agent
 
 ```typescript
-import { compose, retry, timeout, rateLimiter, cache } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, rateLimiterMiddleware, cacheMiddleware } from 'ai-patterns';
 
 const aiAgent = compose([
-  cache({ ttl: 300000 }),  // 5 min cache
-  rateLimiter({
+  cacheMiddleware({ ttl: 300000 }),  // 5 min cache
+  rateLimiterMiddleware({
     requests: 10,
     window: 60000,  // 10 requests per minute
     onLimitReached: (retryAfter) => console.log(`Rate limited. Retry after ${retryAfter}ms`)
   }),
-  timeout({ duration: 15000 }),
-  retry({ maxAttempts: 2 })
+  timeoutMiddleware({ duration: 15000 }),
+  retryMiddleware({ maxAttempts: 2 })
 ]);
 
 // All requests share the same rate limiter and cache
@@ -336,19 +336,19 @@ for (const task of tasks) {
 ### Example 5: Environment-Specific Configurations
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns';
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns';
 
 // Development config - more permissive
 const devPipeline = compose([
-  timeout({ duration: 30000 }),
-  retry({ maxAttempts: 1 })
+  timeoutMiddleware({ duration: 30000 }),
+  retryMiddleware({ maxAttempts: 1 })
 ]);
 
 // Production config - aggressive resilience
 const prodPipeline = compose([
-  fallback({ fallback: () => 'Service temporarily unavailable' }),
-  timeout({ duration: 5000 }),
-  retry({
+  fallbackMiddleware({ fallback: () => 'Service temporarily unavailable' }),
+  timeoutMiddleware({ duration: 5000 }),
+  retryMiddleware({
     maxAttempts: 5,
     backoffStrategy: 'exponential',
     maxDelay: 10000
@@ -372,13 +372,13 @@ const result = await pipeline(
 
 ### ✅ Do
 
-1. **Compose patterns in logical order**
+1. **Compose middleware in logical order**
    ```typescript
    // Good: Fallback → Timeout → Retry
    compose([
-     fallback({ ... }),
-     timeout({ ... }),
-     retry({ ... })
+     fallbackMiddleware({ ... }),
+     timeoutMiddleware({ ... }),
+     retryMiddleware({ ... })
    ]);
    ```
 
@@ -395,8 +395,8 @@ const result = await pipeline(
    ```typescript
    // Good: Timeout per retry attempt
    compose([
-     timeout({ duration: 5000 }),
-     retry({ maxAttempts: 3 })
+     timeoutMiddleware({ duration: 5000 }),
+     retryMiddleware({ maxAttempts: 3 })
    ]);
    // Total possible time: 15 seconds (3 × 5s)
    ```
@@ -405,17 +405,17 @@ const result = await pipeline(
    ```typescript
    // Good: Always have a fallback
    compose([
-     fallback({ fallback: () => defaultValue }),
-     // ... other patterns
+     fallbackMiddleware({ fallback: () => defaultValue }),
+     // ... other middleware
    ]);
    ```
 
-5. **Share stateful patterns across calls**
+5. **Share stateful middleware across calls**
    ```typescript
    // Good: Circuit breaker state shared across all calls
    const api = compose([
-     circuitBreaker({ ... }),
-     retry({ ... })
+     circuitBreakerMiddleware({ ... }),
+     retryMiddleware({ ... })
    ]);
 
    await api(operation1, input1);
@@ -426,21 +426,21 @@ const result = await pipeline(
 
 1. **Don't over-compose**
    ```typescript
-   // Bad: Too many patterns, hard to reason about
+   // Bad: Too many middleware, hard to reason about
    compose([
-     pattern1,
-     pattern2,
-     pattern3,
-     pattern4,
-     pattern5,
-     pattern6
+     middleware1,
+     middleware2,
+     middleware3,
+     middleware4,
+     middleware5,
+     middleware6
    ]);
 
-   // Good: 2-4 patterns maximum
+   // Good: 2-4 middleware maximum
    compose([
-     fallback({ ... }),
-     timeout({ ... }),
-     retry({ ... })
+     fallbackMiddleware({ ... }),
+     timeoutMiddleware({ ... }),
+     retryMiddleware({ ... })
    ]);
    ```
 
@@ -448,15 +448,15 @@ const result = await pipeline(
    ```typescript
    // Bad: Single timeout for all retries
    compose([
-     timeout({ duration: 5000 }),
-     retry({ maxAttempts: 3 })
+     timeoutMiddleware({ duration: 5000 }),
+     retryMiddleware({ maxAttempts: 3 })
    ]);
    // All 3 retries must complete in 5s total
 
    // Good: Timeout per retry
    compose([
-     retry({ maxAttempts: 3 }),
-     timeout({ duration: 5000 })
+     retryMiddleware({ maxAttempts: 3 }),
+     timeoutMiddleware({ duration: 5000 })
    ]);
    // Each retry has 5s timeout
    ```
@@ -465,16 +465,16 @@ const result = await pipeline(
    ```typescript
    // Bad: Fallback innermost (defeats the purpose)
    compose([
-     retry({ ... }),
-     timeout({ ... }),
-     fallback({ ... })
+     retryMiddleware({ ... }),
+     timeoutMiddleware({ ... }),
+     fallbackMiddleware({ ... })
    ]);
 
    // Good: Fallback outermost (catches all failures)
    compose([
-     fallback({ ... }),
-     timeout({ ... }),
-     retry({ ... })
+     fallbackMiddleware({ ... }),
+     timeoutMiddleware({ ... }),
+     retryMiddleware({ ... })
    ]);
    ```
 
@@ -496,7 +496,7 @@ const result = await pipeline(
 
 ### Composition Order Guide
 
-**Common pattern order** (from outermost to innermost):
+**Common middleware order** (from outermost to innermost):
 
 1. **Fallback** - Catches all failures, provides fallback
 2. **Circuit Breaker** - Prevents cascading failures
@@ -507,12 +507,12 @@ const result = await pipeline(
 
 ```typescript
 const pipeline = compose([
-  fallback({ ... }),       // 1. Outermost
-  circuitBreaker({ ... }), // 2.
-  rateLimiter({ ... }),    // 3.
-  timeout({ ... }),        // 4.
-  retry({ ... }),          // 5.
-  cache({ ... })           // 6. Innermost
+  fallbackMiddleware({ ... }),       // 1. Outermost
+  circuitBreakerMiddleware({ ... }), // 2.
+  rateLimiterMiddleware({ ... }),    // 3.
+  timeoutMiddleware({ ... }),        // 4.
+  retryMiddleware({ ... }),          // 5.
+  cacheMiddleware({ ... })           // 6. Innermost
 ]);
 ```
 

@@ -106,7 +106,6 @@ class Bulkhead<TResult = any> {
     const { logger = defaultLogger } = this.options;
 
     this.concurrent++;
-    const executionStart = Date.now();
 
     if (this.options.onExecute) {
       this.options.onExecute();
@@ -115,7 +114,6 @@ class Bulkhead<TResult = any> {
     try {
       logger.info(`Executing (${this.concurrent} concurrent)`);
       const value = await this.fn();
-      const _executionTime = Date.now() - executionStart;
       this.completed++;
 
       return value;

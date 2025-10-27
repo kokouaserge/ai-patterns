@@ -1,7 +1,7 @@
 {
   "name": "ai-patterns",
-  "version": "1.0.2",
-  "description": "Production-ready TypeScript patterns to build solid and robust AI applications. Retry logic, circuit breakers, rate limiting, human-in-the-loop escalation, and more—all with complete type safety.",
+  "version": "1.1.0",
+  "description": "Production-ready TypeScript patterns to build solid and robust AI applications. Retry logic, circuit breakers, rate limiting, human-in-the-loop escalation, prompt versioning, response validation, context window management, and more—all with complete type safety.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -47,7 +47,16 @@
     "experimentation",
     "cost-tracking",
     "budget-control",
-    "monitoring"
+    "monitoring",
+    "prompt-versioning",
+    "response-validation",
+    "context-window",
+    "prompt-management",
+    "validation",
+    "context-management",
+    "token-management",
+    "ai-validation",
+    "quality-assurance"
   ],
   "author": "Serge KOKOUA",
   "license": "MIT",

@@ -11,7 +11,7 @@ We provide developers with battle-tested tools for resilient AI workflows: retry
 
 ## Features
 
-✨ **17 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, A/B Testing, Cost Tracking, and more
+✨ **20 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, A/B Testing, Cost Tracking, Prompt Versioning, Response Validation, Context Window Management, and more
 🎨 **Elegant Composition** - Compose patterns together for complex workflows
 🔒 **Type-Safe** - Full TypeScript support with generics and strict mode
 🧩 **Composable** - Patterns work together seamlessly for robust workflows
@@ -201,6 +201,7 @@ const result = await robustAI(callAI, "Explain quantum computing");
 | Pattern | Description | Use Case | Docs |
 |---------|-------------|----------|------|
 | **[humanInTheLoop](#human-in-the-loop)** | AI → Human escalation | Content moderation | [📖](./docs/patterns/human-in-the-loop.md) |
+| **[smartContextWindow](#context-window)** | Manage context token limits automatically | Long conversations, chat apps | [📖](./docs/patterns/context-window.md) |
 | **[idempotency](#idempotency)** | Prevent duplicate operations | Payment processing | [📖](./docs/patterns/idempotency.md) |
 
 ### Experimentation & Monitoring
@@ -209,6 +210,8 @@ const result = await robustAI(callAI, "Explain quantum computing");
 |---------|-------------|----------|------|
 | **[abTest](#ab-testing)** | Test multiple variants simultaneously | Prompt optimization, model selection | [📖](./docs/patterns/ab-test.md) |
 | **[costTracking](#cost-tracking)** | Monitor and control AI spending | Budget management, cost optimization | [📖](./docs/patterns/cost-tracking.md) |
+| **[versionedPrompt](#prompt-versioning)** | Manage prompt versions with rollback | Prompt experimentation, gradual rollout | [📖](./docs/patterns/prompt-versioning.md) |
+| **[validateResponse](#response-validation)** | Validate AI responses with auto-retry | Quality assurance, business rules | [📖](./docs/patterns/response-validation.md) |
 
 ---
 
@@ -316,9 +319,12 @@ const result = await robustAI(
 - [Fan-Out →](./docs/patterns/fan-out.md)
 - [Saga →](./docs/patterns/saga.md)
 - [Human-in-the-Loop →](./docs/patterns/human-in-the-loop.md)
+- [Smart Context Window →](./docs/patterns/context-window.md)
 - [Idempotency →](./docs/patterns/idempotency.md)
 - [A/B Testing →](./docs/patterns/ab-test.md)
 - [Cost Tracking →](./docs/patterns/cost-tracking.md)
+- [Prompt Versioning →](./docs/patterns/prompt-versioning.md)
+- [Response Validation →](./docs/patterns/response-validation.md)
 
 **Runnable examples:**
 - [View all examples →](./examples/basic)
@@ -340,10 +346,16 @@ Each pattern has a simple runnable example:
 - [idempotency-simple.ts](./examples/basic/idempotency-simple.ts)
 - [ab-test-simple.ts](./examples/basic/ab-test-simple.ts)
 - [cost-tracking-simple.ts](./examples/basic/cost-tracking-simple.ts)
+- [prompt-versioning-simple.ts](./examples/basic/prompt-versioning-simple.ts)
+- [response-validation-simple.ts](./examples/basic/response-validation-simple.ts)
+- [context-window-simple.ts](./examples/basic/context-window-simple.ts)
 
 ### Advanced Examples
 
 - [ab-test-with-cost-tracking.ts](./examples/composition/ab-test-with-cost-tracking.ts) - Combine A/B testing with cost tracking for ROI optimization
+- [prompt-versioning-with-monitoring.ts](./examples/composition/prompt-versioning-with-monitoring.ts) - Prompt versioning with retry logic and analytics
+- [response-validation-with-retry.ts](./examples/composition/response-validation-with-retry.ts) - Response validation with timeout, retry, and moderation
+- [context-window-with-summarization.ts](./examples/composition/context-window-with-summarization.ts) - Context window management with AI summarization
 
 ### Real-World Examples
 
@@ -366,9 +378,12 @@ Coming soon:
 - [Fan-Out Pattern](./docs/patterns/fan-out.md)
 - [Saga Pattern](./docs/patterns/saga.md)
 - [Human-in-the-Loop Pattern](./docs/patterns/human-in-the-loop.md)
+- [Smart Context Window Pattern](./docs/patterns/context-window.md)
 - [Idempotency Pattern](./docs/patterns/idempotency.md)
 - [A/B Testing Pattern](./docs/patterns/ab-test.md)
 - [Cost Tracking Pattern](./docs/patterns/cost-tracking.md)
+- [Prompt Versioning Pattern](./docs/patterns/prompt-versioning.md)
+- [Response Validation Pattern](./docs/patterns/response-validation.md)
 
 ### Guides
 

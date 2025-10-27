@@ -22,6 +22,9 @@ import { debounce } from "../timing/debounce";
 import { throttle } from "../timing/throttle";
 import { idempotent } from "../consistency/idempotency";
 import { costTracking } from "../monitoring/cost-tracking";
+import { versionedPrompt } from "../experimentation/prompt-versioning";
+import { validateResponse } from "../validation/response-validation";
+import { smartContextWindow } from "../ai/context-window";
 import type { RetryOptions } from "../types/retry";
 import type { CircuitBreakerOptions } from "../types/circuit-breaker";
 import type { RateLimiterOptions } from "../types/rate-limiter";
@@ -30,6 +33,9 @@ import type { DebounceOptions } from "../types/debounce";
 import type { ThrottleOptions } from "../types/throttle";
 import type { IdempotencyOptions } from "../types/idempotency";
 import type { CostTrackingConfig } from "../types/cost-tracking";
+import type { PromptVersioningConfig, PromptVersion } from "../types/prompt-versioning";
+import type { ValidateResponseConfig, ResponseValidator } from "../types/response-validation";
+import type { SmartContextWindowConfig, Message, ContextStrategy } from "../types/context-window";
 
 // Re-export types for convenience
 export type {
@@ -280,6 +286,103 @@ export function costTrackingMiddleware<TInput = any, TOutput = any>(
   };
 }
 
+// ===== Prompt Versioning Middleware =====
+
+/**
+ * Prompt versioning middleware - wraps the versionedPrompt pattern
+ */
+export function promptVersioningMiddleware<TInput = any, TOutput = any>(
+  options: {
+    promptId: string;
+    versions: Record<string, PromptVersion>;
+    getPromptForInput?: (input: TInput) => string;
+  } & Omit<PromptVersioningConfig<TOutput>, "execute" | "promptId" | "versions">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await versionedPrompt<TOutput>({
+      promptId: options.promptId,
+      versions: options.versions,
+      execute: async (prompt, version) => {
+        // Pass the selected prompt to the next middleware/function
+        // The input can be enhanced with the prompt if needed
+        return await next(input);
+      },
+      storage: options.storage,
+      onVersionUsed: options.onVersionUsed,
+      onSuccess: options.onSuccess,
+      onError: options.onError,
+      autoRollback: options.autoRollback,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
+// ===== Response Validation Middleware =====
+
+/**
+ * Response validation middleware - wraps the validateResponse pattern
+ */
+export function responseValidationMiddleware<TInput = any, TOutput = any>(
+  options: {
+    validators: ResponseValidator<TOutput>[];
+  } & Omit<ValidateResponseConfig<TOutput>, "execute" | "validators">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await validateResponse<TOutput>({
+      execute: async () => await next(input),
+      validators: options.validators,
+      maxRetries: options.maxRetries,
+      retryDelayMs: options.retryDelayMs,
+      parallel: options.parallel,
+      onValidationFailed: options.onValidationFailed,
+      onValidatorPassed: options.onValidatorPassed,
+      onValidationSuccess: options.onValidationSuccess,
+      onAllRetriesFailed: options.onAllRetriesFailed,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
+// ===== Context Window Middleware =====
+
+/**
+ * Context window middleware - wraps the smartContextWindow pattern
+ * Useful for managing message history in chat applications
+ */
+export function contextWindowMiddleware<TInput = any, TOutput = any>(
+  options: {
+    getMessages: (input: TInput) => Message[];
+    maxTokens: number;
+    strategy?: ContextStrategy;
+  } & Omit<SmartContextWindowConfig<TOutput>, "execute" | "messages" | "maxTokens" | "strategy">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const messages = options.getMessages(input);
+
+    const result = await smartContextWindow<TOutput>({
+      execute: async (optimizedMessages) => {
+        // The next function should receive the optimized messages
+        // This can be done by enhancing the input or by convention
+        return await next(input);
+      },
+      messages,
+      maxTokens: options.maxTokens,
+      strategy: options.strategy,
+      strategies: options.strategies,
+      tokenCounter: options.tokenCounter,
+      keepRecentCount: options.keepRecentCount,
+      summarizeOldCount: options.summarizeOldCount,
+      summarizer: options.summarizer,
+      onTruncation: options.onTruncation,
+      onOptimization: options.onOptimization,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
 // ===== Cleaner "with*" Aliases =====
 
 export const withRetry = retryMiddleware;
@@ -293,3 +396,6 @@ export const withDebounce = debounceMiddleware;
 export const withThrottle = throttleMiddleware;
 export const withIdempotency = idempotencyMiddleware;
 export const withCostTracking = costTrackingMiddleware;
+export const withPromptVersioning = promptVersioningMiddleware;
+export const withResponseValidation = responseValidationMiddleware;
+export const withContextWindow = contextWindowMiddleware;

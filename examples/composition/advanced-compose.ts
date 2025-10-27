@@ -34,7 +34,7 @@ async function main() {
       const result = await fallback<string>({
         execute: async () => {
           // Timeout protection
-          return await timeout<string>({
+          const timeoutResult = await timeout<string>({
             execute: async () => {
               // Retry logic
               const retryResult = await retry<string>({
@@ -54,6 +54,7 @@ async function main() {
             },
             timeoutMs: 8000,
           });
+          return timeoutResult.value;
         },
         fallback: async () => {
           console.log("  🔄 Falling back to Claude...");
@@ -69,8 +70,8 @@ async function main() {
       return result.value;
     },
     failureThreshold: 3,
-    resetTimeout: 30000,
-    halfOpenAttempts: 2,
+    openDuration: 30000,
+    halfOpenMaxAttempts: 2,
     onOpen: () => console.log("  🔴 Circuit breaker opened"),
     onClose: () => console.log("  🟢 Circuit breaker closed"),
     onHalfOpen: () => console.log("  🟡 Circuit breaker half-open"),
@@ -81,7 +82,7 @@ async function main() {
       return await circuitBreaker(request);
     },
     maxRequests: 5,
-    window: 10000, // 10 seconds
+    windowMs: 10000, // 10 seconds
     strategy: RateLimitStrategy.FIXED_WINDOW,
     onLimitReached: (retryAfter) => {
       console.log(`  ⏱️  Rate limit reached. Retry after ${retryAfter}ms`);

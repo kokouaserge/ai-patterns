@@ -48,7 +48,7 @@ async function main() {
       const result = await fallback<string>({
         execute: async () => {
           // Timeout pattern
-          return await timeout<string>({
+          const timeoutResult = await timeout<string>({
             execute: async () => {
               // Retry pattern
               const retryResult = await retry<string>({
@@ -67,6 +67,7 @@ async function main() {
             },
             timeoutMs: 10000,
           });
+          return timeoutResult.value;
         },
         fallback: async () => {
           console.log("  ⚠️  Using fallback response");

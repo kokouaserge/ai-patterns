@@ -58,8 +58,8 @@ async function main() {
       return await cachedAgent(input);
     },
     failureThreshold: 5,
-    resetTimeout: 60000,
-    halfOpenAttempts: 2,
+    openDuration: 60000,
+    halfOpenMaxAttempts: 2,
     onOpen: () => console.log("  🔴 Circuit breaker opened"),
     onClose: () => console.log("  🟢 Circuit breaker closed"),
     onHalfOpen: () => console.log("  🟡 Circuit breaker half-open"),
@@ -75,7 +75,7 @@ async function main() {
       const result = await fallback<TaskAnalysis>({
         execute: async () => {
           // Timeout pattern
-          return await timeout<TaskAnalysis>({
+          const timeoutResult = await timeout<TaskAnalysis>({
             execute: async () => {
               // Retry pattern
               const retryResult = await retry<TaskAnalysis>({
@@ -96,8 +96,9 @@ async function main() {
               return retryResult.value;
             },
             timeoutMs: 15000,
-            errorMessage: "Agent analysis timed out",
+            message: "Agent analysis timed out",
           });
+          return timeoutResult.value;
         },
         fallback: async () => {
           console.log("  ⚠️  Using fallback analysis");

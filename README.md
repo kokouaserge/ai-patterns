@@ -57,7 +57,8 @@ const result = await retry({
   execute: async () => {
     const { text } = await generateText({
       model: openai('gpt-4-turbo'),
-      prompt: 'Explain quantum computing'
+      prompt: 'Explain quantum computing',
+      maxRetries: 0 // Disable Vercel's built-in retry
     });
     return text;
   },
@@ -66,6 +67,12 @@ const result = await retry({
 
 console.log(result.value);
 ```
+
+> **💡 Note:** While Vercel AI SDK has built-in retry (`maxRetries: 2`), `ai-patterns` gives you **more flexibility**:
+> - 🎛️ Custom backoff strategies (exponential, linear, fixed)
+> - 📊 Detailed observability (attempts, delays, errors)
+> - 🔄 Cross-provider fallback (OpenAI → Claude → Gemini)
+> - 🎯 Advanced retry logic (conditional, circuit breakers)
 
 ## Why ai-patterns?
 

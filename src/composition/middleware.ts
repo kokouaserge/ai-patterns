@@ -302,7 +302,7 @@ export function promptVersioningMiddleware<TInput = any, TOutput = any>(
     const result = await versionedPrompt<TOutput>({
       promptId: options.promptId,
       versions: options.versions,
-      execute: async (prompt, version) => {
+      execute: async (_prompt, _version) => {
         // Pass the selected prompt to the next middleware/function
         // The input can be enhanced with the prompt if needed
         return await next(input);
@@ -362,7 +362,7 @@ export function contextWindowMiddleware<TInput = any, TOutput = any>(
     const messages = options.getMessages(input);
 
     const result = await smartContextWindow<TOutput>({
-      execute: async (optimizedMessages) => {
+      execute: async (_optimizedMessages) => {
         // The next function should receive the optimized messages
         // This can be done by enhancing the input or by convention
         return await next(input);

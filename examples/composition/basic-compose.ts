@@ -1,108 +1,90 @@
 /**
- * Basic Composition Example
+ * Basic Compose Example
  *
- * This example demonstrates how to compose multiple patterns together
- * to create a robust, production-ready AI workflow using patterns directly.
+ * This example demonstrates how to use compose() with middleware
+ * to create a robust, production-ready AI workflow.
  */
 
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import {
-  retry,
-  timeout,
-  fallback,
-  memoize,
+  compose,
+  withRetry,
+  withTimeout,
+  withFallback,
+  withCache,
   BackoffStrategy,
 } from "../../src";
 
-interface PromptInput {
-  prompt: string;
-  userId?: string;
-}
-
 async function main() {
-  console.log("🎯 Basic Composition Example\n");
+  console.log("🎯 Basic Compose Example\n");
 
-  // Create a memoized AI function (caching layer)
-  const cachedAI = memoize<[PromptInput], string>({
-    execute: async (input: PromptInput) => {
-      console.log(`  🤖 Calling OpenAI for: "${input.prompt}"`);
-      const { text } = await generateText({
-        model: openai("gpt-4-turbo"),
-        prompt: input.prompt,
-        maxRetries: 0,
-      });
-      return text;
-    },
-    ttl: 5 * 60 * 1000, // 5 minutes cache
-    keyFn: (input) => input.prompt,
-  });
+  // Create a robust AI pipeline using compose()
+  const robustAI = compose<string, string>([
+    withFallback({
+      fallback: () => "I apologize, but I'm having trouble processing your request right now. Please try again later.",
+    }),
+    withTimeout({ duration: 10000 }),
+    withRetry({
+      maxAttempts: 3,
+      backoffStrategy: BackoffStrategy.EXPONENTIAL,
+      initialDelay: 1000,
+    }),
+    withCache({
+      ttl: 5 * 60 * 1000, // 5 minutes cache
+      keyFn: (prompt) => prompt,
+    }),
+  ]);
 
-  // Compose patterns together by nesting them
-  async function robustAI(input: PromptInput): Promise<string> {
-    console.log("🚀 Starting AI request...\n");
-    const startTime = Date.now();
-
-    try {
-      // Fallback pattern (outermost)
-      const result = await fallback<string>({
-        execute: async () => {
-          // Timeout pattern
-          const timeoutResult = await timeout<string>({
-            execute: async () => {
-              // Retry pattern
-              const retryResult = await retry<string>({
-                execute: async () => {
-                  // Cache pattern (innermost)
-                  return await cachedAI(input);
-                },
-                maxAttempts: 3,
-                backoffStrategy: BackoffStrategy.EXPONENTIAL,
-                initialDelay: 1000,
-                onRetry: (error, attempt) => {
-                  console.log(`  🔄 Retry attempt ${attempt} after error: ${error.message}`);
-                },
-              });
-              return retryResult.value;
-            },
-            timeoutMs: 10000,
-          });
-          return timeoutResult.value;
-        },
-        fallback: async () => {
-          console.log("  ⚠️  Using fallback response");
-          return "I apologize, but I'm having trouble processing your request right now. Please try again later.";
-        },
-      });
-
-      const duration = Date.now() - startTime;
-      console.log(`\n✅ Completed in ${duration}ms`);
-      return result.value;
-    } catch (error) {
-      console.error(`\n❌ Error: ${(error as Error).message}`);
-      throw error;
-    }
-  }
+  // Define the AI operation
+  const callAI = async (prompt: string): Promise<string> => {
+    console.log(`  🤖 Calling OpenAI for: "${prompt}"`);
+    const { text } = await generateText({
+      model: openai("gpt-4-turbo"),
+      prompt,
+      maxRetries: 0,
+    });
+    return text;
+  };
 
   // First request - will execute and cache
   console.log("📝 First request:");
-  const result1 = await robustAI({ prompt: "What is the capital of France?" });
-  console.log(`\n💬 Response: ${result1}\n`);
+  const startTime1 = Date.now();
+  const result1 = await robustAI(callAI, "What is the capital of France?");
+  const duration1 = Date.now() - startTime1;
+  console.log(`\n💬 Response: ${result1}`);
+  console.log(`⏱️  Duration: ${duration1}ms\n`);
 
   // Second request with same prompt - will use cache
   console.log("\n" + "=".repeat(60) + "\n");
   console.log("📝 Second request (same prompt):");
-  const result2 = await robustAI({ prompt: "What is the capital of France?" });
+  const startTime2 = Date.now();
+  const result2 = await robustAI(callAI, "What is the capital of France?");
+  const duration2 = Date.now() - startTime2;
   console.log(`\n💬 Response: ${result2}`);
-  console.log("  ⚡ (Retrieved from cache)");
+  console.log(`⏱️  Duration: ${duration2}ms`);
+  console.log("  ⚡ (Retrieved from cache - much faster!)");
 
   // Third request with different prompt
   console.log("\n" + "=".repeat(60) + "\n");
   console.log("📝 Third request (different prompt):");
-  const result3 = await robustAI({
-    prompt: "What is the largest planet in our solar system?",
-  });
+  const startTime3 = Date.now();
+  const result3 = await robustAI(
+    callAI,
+    "What is the largest planet in our solar system?"
+  );
+  const duration3 = Date.now() - startTime3;
   console.log(`\n💬 Response: ${result3}`);
+  console.log(`⏱️  Duration: ${duration3}ms`);
+
+  console.log("\n" + "=".repeat(60));
+  console.log("\n✨ Example completed!");
+  console.log("\nKey features demonstrated:");
+  console.log("  • compose() creates reusable pipeline");
+  console.log("  • withCache() caches responses");
+  console.log("  • withRetry() retries on failures");
+  console.log("  • withTimeout() adds time limits");
+  console.log("  • withFallback() provides graceful degradation");
 }
 
 // Run the example

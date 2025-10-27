@@ -8,6 +8,9 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -47,7 +50,9 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.3.0"
+    "@vitest/coverage-v8": "^2.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
   },
   "files": [
     "dist",

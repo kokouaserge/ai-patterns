@@ -92,22 +92,42 @@ const result2 = await breaker('Second prompt');
 console.log(breaker.getState()); // Check circuit state
 ```
 
-### Middleware Composition
+### Pattern Composition
 
-For complex workflows, use the `compose()` function with middleware:
+Compose patterns together by nesting them for robust workflows:
 
 ```typescript
-import { compose, retryMiddleware, timeoutMiddleware } from 'ai-patterns';
+import { retry, timeout, fallback, BackoffStrategy } from 'ai-patterns';
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
 
-const pipeline = compose([
-  timeoutMiddleware({ duration: 10000 }),
-  retryMiddleware({ maxAttempts: 3 })
-]);
+async function robustAI(prompt: string): Promise<string> {
+  const result = await fallback({
+    execute: async () => {
+      return await timeout({
+        execute: async () => {
+          const retryResult = await retry({
+            execute: async () => {
+              const { text } = await generateText({
+                model: openai('gpt-4-turbo'),
+                prompt,
+                maxRetries: 0
+              });
+              return text;
+            },
+            maxAttempts: 3,
+            backoffStrategy: BackoffStrategy.EXPONENTIAL
+          });
+          return retryResult.value;
+        },
+        timeoutMs: 10000
+      });
+    },
+    fallback: async () => "Fallback response"
+  });
 
-const result = await pipeline(
-  async (input) => generateText({ model: openai('gpt-4-turbo'), prompt: input }),
-  'Your prompt here'
-);
+  return result.value;
+}
 ```
 
 ## Patterns
@@ -116,7 +136,7 @@ const result = await pipeline(
 
 | Pattern | Description | Use Case | Docs |
 |---------|-------------|----------|------|
-| **[compose](#compose)** | Functional pattern composition | Complex AI pipelines | - |
+| **[compose](#compose)** | Functional pattern composition | Complex AI pipelines | [📖](./docs/patterns/compose.md) |
 | **[retry](#retry)** | Automatic retry with exponential backoff | Unstable APIs, network issues | [📖](./docs/patterns/retry.md) |
 | **[timeout](#timeout)** | Time limits with AbortSignal support | Long-running operations | [📖](./docs/patterns/timeout.md) |
 | **[fallback](#fallback)** | Execute alternatives on failure | Multi-provider failover | [📖](./docs/patterns/fallback.md) |

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineRateLimiter } from './rate-limiter';
 import { RateLimitStrategy } from '../types/rate-limiter';
 import { PatternError, ErrorCode } from '../types/errors';
@@ -153,6 +153,7 @@ describe('rate-limiter', () => {
 
       // Advance time
       vi.advanceTimersByTime(1000);
+      await vi.runAllTimersAsync();
 
       const result = await waitPromise;
       expect(result.allowed).toBe(true);

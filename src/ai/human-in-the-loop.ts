@@ -11,6 +11,7 @@ import {
   EscalationRule,
   HumanReview,
   HumanInTheLoopOptions,
+  HumanInTheLoopResult,
   CommonEscalationRules,
 } from "../types/human-in-the-loop";
 
@@ -234,7 +235,7 @@ export class HumanInTheLoop<TInput = any, TOutput = any> {
  */
 export async function humanInTheLoop<TInput = any, TOutput = any>(
   options: HumanInTheLoopOptions<TInput, TOutput>
-): Promise<TOutput> {
+): Promise<HumanInTheLoopResult<TOutput>> {
   const {
     execute: aiFn,
     input,
@@ -289,7 +290,11 @@ export async function humanInTheLoop<TInput = any, TOutput = any>(
       onReviewComplete(review);
     }
 
-    return humanOutput;
+    return {
+      value: humanOutput,
+      escalated: true,
+      escalationReason: escalationRule.reason,
+    };
   }
 
   // No escalation, return AI output (or throw error)
@@ -297,7 +302,10 @@ export async function humanInTheLoop<TInput = any, TOutput = any>(
     throw error;
   }
 
-  return aiOutput!;
+  return {
+    value: aiOutput!,
+    escalated: false,
+  };
 }
 
 /**

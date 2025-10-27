@@ -45,6 +45,9 @@ export enum ErrorCode {
   REQUEST_FAILED = "REQUEST_FAILED",
   INVALID_IDEMPOTENCY_KEY = "INVALID_IDEMPOTENCY_KEY",
 
+  // Conditional Branch errors
+  NO_MATCHING_BRANCH = "NO_MATCHING_BRANCH",
+
   // Generic errors
   INVALID_CONFIGURATION = "INVALID_CONFIGURATION",
   OPERATION_FAILED = "OPERATION_FAILED",
@@ -307,6 +310,19 @@ const ERROR_RESOLUTIONS: Record<ErrorCode, ErrorResolution> = {
     cause: "The keyGenerator function produced an invalid key",
     solution:
       "1. Review keyGenerator implementation\n2. Ensure it returns consistent keys for same inputs\n3. Keys should be strings and unique per operation",
+  },
+
+  // Conditional Branch errors
+  [ErrorCode.NO_MATCHING_BRANCH]: {
+    problem: "No branch condition matched the input",
+    cause: "All branch conditions evaluated to false and no default branch was provided",
+    solution:
+      "1. Add a default branch to handle unmatched cases\n2. Review branch conditions to ensure they cover all expected inputs\n3. Add a catch-all condition as the last branch",
+    tips: [
+      "Use defaultBranch for fallback behavior",
+      "Ensure at least one condition can match",
+      "Consider logging unmatched inputs for debugging",
+    ],
   },
 
   // Generic errors

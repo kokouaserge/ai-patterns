@@ -26,6 +26,11 @@ export interface BulkheadOptions<TResult = any> {
   maxQueue?: number;
 
   /**
+   * Alias for maxQueue
+   */
+  maxQueued?: number;
+
+  /**
    * Timeout for queued requests in ms
    * @default undefined (no timeout)
    */
@@ -85,6 +90,16 @@ export interface BulkheadStats {
    * Current queue size
    */
   queueSize: number;
+
+  /**
+   * Current active executions (alias for concurrent)
+   */
+  activeCount: number;
+
+  /**
+   * Current queued requests (alias for queueSize)
+   */
+  queuedCount: number;
 
   /**
    * Total completed

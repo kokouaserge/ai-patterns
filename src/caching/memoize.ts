@@ -18,9 +18,14 @@ interface CacheEntry<T> {
   expiresAt: number;
 }
 
+export interface MemoizedFunction<TArgs extends any[] = any[], TResult = any> {
+  (...args: TArgs): Promise<TResult>;
+  clear: () => void;
+}
+
 export function memoize<TArgs extends any[] = any[], TResult = any>(
   options: MemoizeOptions<TArgs, TResult>
-): (...args: TArgs) => Promise<TResult> {
+): MemoizedFunction<TArgs, TResult> {
   const {
     execute: fn,
     ttl,
@@ -32,7 +37,7 @@ export function memoize<TArgs extends any[] = any[], TResult = any>(
 
   const cache = new Map<string, CacheEntry<TResult>>();
 
-  return async function memoized(...args: TArgs): Promise<TResult> {
+  const memoized = async function(...args: TArgs): Promise<TResult> {
     const key = keyFn(...args);
     const now = Date.now();
 
@@ -55,4 +60,11 @@ export function memoize<TArgs extends any[] = any[], TResult = any>(
 
     return value;
   };
+
+  // Add clear method to the function
+  memoized.clear = () => {
+    cache.clear();
+  };
+
+  return memoized as MemoizedFunction<TArgs, TResult>;
 }

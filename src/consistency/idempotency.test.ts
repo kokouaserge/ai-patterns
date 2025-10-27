@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { idempotent } from './idempotency';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { idempotent, resetGlobalIdempotencyStore } from './idempotency';
 
 describe('idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    resetGlobalIdempotencyStore();
   });
 
   afterEach(() => {
@@ -100,6 +101,9 @@ describe('idempotency', () => {
 
   describe('concurrent requests', () => {
     it('should handle concurrent requests with same key', async () => {
+      // Use real timers for this test since we're testing concurrency, not timing
+      vi.useRealTimers();
+
       let callCount = 0;
       const fn = vi.fn().mockImplementation(async () => {
         callCount++;

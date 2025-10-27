@@ -58,22 +58,22 @@ export interface SagaOptions<TContext = any> {
   /**
    * Callback before each step
    */
-  onStepStart?: (step: SagaStep<TContext>, index: number) => void;
+  onStepStart?: (stepName: string, index: number) => void;
 
   /**
    * Callback after successful step
    */
-  onStepComplete?: (step: SagaStep<TContext>, index: number, result: unknown) => void;
+  onStepComplete?: (stepName: string, result: unknown) => void;
 
   /**
-   * Callback on step error
+   * Callback on step failure
    */
-  onStepError?: (step: SagaStep<TContext>, index: number, error: Error) => void;
+  onStepFailed?: (stepName: string, error: Error) => void;
 
   /**
    * Callback during compensation
    */
-  onCompensate?: (step: SagaStep<TContext>, index: number) => void;
+  onCompensate?: (stepName: string) => void;
 
   /**
    * Callback when saga completes

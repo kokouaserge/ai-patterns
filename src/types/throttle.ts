@@ -27,7 +27,7 @@ export interface ThrottleOptions<TArgs extends any[] = any[], TResult = any> {
 
   /**
    * Execute on trailing edge (after interval expires)
-   * @default false
+   * @default true
    */
   trailing?: boolean;
 

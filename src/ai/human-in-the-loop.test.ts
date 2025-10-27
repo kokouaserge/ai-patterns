@@ -73,7 +73,12 @@ describe('human-in-the-loop', () => {
     });
 
     it('should use custom rule', async () => {
-      const customRule = (result: any) => result.flagged === true;
+      const customRule = {
+        name: 'custom-flagged',
+        shouldEscalate: (_: any, result: any) => result?.flagged === true,
+        reason: 'CUSTOM' as any,
+        priority: 5,
+      };
       const fn = vi.fn().mockResolvedValue({ flagged: true });
       const requestHumanReview = vi.fn().mockResolvedValue({ flagged: false });
 
@@ -124,27 +129,33 @@ describe('human-in-the-loop', () => {
       expect(onEscalate).toHaveBeenCalledWith(
         expect.objectContaining({
           input: 'test',
-          aiResult: { confidence: 0.5 },
+          aiOutput: { confidence: 0.5 },
         })
       );
     });
 
-    it('should invoke onResolved callback', async () => {
+    it('should invoke onReviewComplete callback', async () => {
       const fn = vi.fn().mockResolvedValue({ confidence: 0.5 });
       const humanResult = { confidence: 1.0 };
       const requestHumanReview = vi.fn().mockResolvedValue(humanResult);
-      const onResolved = vi.fn();
+      const onReviewComplete = vi.fn();
 
       await humanInTheLoop({
         execute: fn,
         input: 'test',
         escalationRules: [CommonEscalationRules.lowConfidence(0.8)],
         requestHumanReview,
-        onResolved,
+        onReviewComplete,
       });
 
-      expect(onResolved).toHaveBeenCalledTimes(1);
-      expect(onResolved).toHaveBeenCalledWith(humanResult, expect.any(Number));
+      expect(onReviewComplete).toHaveBeenCalledTimes(1);
+      expect(onReviewComplete).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: 'test',
+          aiOutput: { confidence: 0.5 },
+          humanOutput: humanResult,
+        })
+      );
     });
   });
 
@@ -181,8 +192,8 @@ describe('CommonEscalationRules', () => {
     it('should trigger on low confidence', () => {
       const rule = CommonEscalationRules.lowConfidence(0.8);
 
-      expect(rule({ confidence: 0.7 })).toBe(true);
-      expect(rule({ confidence: 0.9 })).toBe(false);
+      expect(rule.shouldEscalate(undefined, { confidence: 0.7 })).toBe(true);
+      expect(rule.shouldEscalate(undefined, { confidence: 0.9 })).toBe(false);
     });
   });
 
@@ -190,16 +201,16 @@ describe('CommonEscalationRules', () => {
     it('should trigger on sensitive keywords', () => {
       const rule = CommonEscalationRules.sensitiveKeywords(['violence', 'hate']);
 
-      expect(rule({ text: 'contains violence and aggression' })).toBe(true);
-      expect(rule({ text: 'safe content' })).toBe(false);
-      expect(rule({ content: 'hate speech detected' })).toBe(true);
+      expect(rule.shouldEscalate(undefined, { text: 'contains violence and aggression' })).toBe(true);
+      expect(rule.shouldEscalate(undefined, { text: 'safe content' })).toBe(false);
+      expect(rule.shouldEscalate(undefined, { content: 'hate speech detected' })).toBe(true);
     });
 
     it('should be case insensitive', () => {
       const rule = CommonEscalationRules.sensitiveKeywords(['Violence']);
 
-      expect(rule({ text: 'VIOLENCE is bad' })).toBe(true);
-      expect(rule({ text: 'violence is bad' })).toBe(true);
+      expect(rule.shouldEscalate(undefined, { text: 'VIOLENCE is bad' })).toBe(true);
+      expect(rule.shouldEscalate(undefined, { text: 'violence is bad' })).toBe(true);
     });
   });
 });

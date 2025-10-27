@@ -73,9 +73,14 @@ export interface RateLimiterOptions<TResult = any> {
  */
 export interface RateLimitResult<T> {
   /**
-   * The successful result value
+   * Whether the request was allowed
    */
-  value: T;
+  allowed: boolean;
+
+  /**
+   * The successful result value (only present if allowed=true)
+   */
+  value?: T;
 
   /**
    * Remaining requests in window
@@ -83,7 +88,7 @@ export interface RateLimitResult<T> {
   remaining: number;
 
   /**
-   * Reset timestamp
+   * Time in ms to wait before retrying (only present if allowed=false)
    */
-  resetAt: number;
+  retryAfter: number;
 }

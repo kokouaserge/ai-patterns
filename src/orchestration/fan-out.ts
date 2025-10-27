@@ -18,13 +18,13 @@ export async function fanOut<TInput, TOutput>(
     continueOnError = false,
     logger = defaultLogger,
     onProgress,
-    onError,
+    onItemError,
   } = options;
 
   const startTime = Date.now();
   const total = items.length;
   const results: TOutput[] = [];
-  const errors = new Map<number, Error>();
+  const errors: Error[] = [];
   let completed = 0;
 
   logger.info(
@@ -39,6 +39,7 @@ export async function fanOut<TInput, TOutput>(
       total: 0,
       successCount: 0,
       errorCount: 0,
+      failureCount: 0,
       duration: 0,
     };
   }
@@ -51,19 +52,19 @@ export async function fanOut<TInput, TOutput>(
       completed++;
 
       if (onProgress) {
-        onProgress(completed, total, item);
+        onProgress(completed, total);
       }
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      errors.set(index, err);
+      errors.push(err);
       completed++;
 
       logger.error(`Error on item ${index + 1}/${total}`, {
         error: err.message,
       });
 
-      if (onError) {
-        onError(err, item, index);
+      if (onItemError) {
+        onItemError(item, err, index);
       }
 
       if (!continueOnError) {
@@ -102,8 +103,8 @@ export async function fanOut<TInput, TOutput>(
   }
 
   const duration = Date.now() - startTime;
-  const successCount = total - errors.size;
-  const errorCount = errors.size;
+  const successCount = total - errors.length;
+  const errorCount = errors.length;
 
   logger.info(
     `Fan-out completed: ${successCount} successes, ${errorCount} errors in ${duration}ms`
@@ -115,6 +116,7 @@ export async function fanOut<TInput, TOutput>(
     total,
     successCount,
     errorCount,
+    failureCount: errorCount,
     duration,
   };
 }

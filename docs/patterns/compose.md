@@ -6,7 +6,9 @@ Compose multiple patterns together to build robust, production-ready AI workflow
 
 - [Overview](#overview)
 - [Installation](#installation)
-- [Basic Usage](#basic-usage)
+- [Two Approaches](#two-approaches)
+  - [Direct Nesting](#direct-nesting)
+  - [Middleware Composition](#middleware-composition)
 - [API Reference](#api-reference)
 - [Examples](#examples)
 - [Best Practices](#best-practices)
@@ -16,7 +18,10 @@ Compose multiple patterns together to build robust, production-ready AI workflow
 
 ## Overview
 
-The compose pattern allows you to combine multiple resilience patterns into a single, reusable function by **nesting them directly** for clear and explicit control flow.
+The compose pattern allows you to combine multiple resilience patterns into a single, reusable function. There are **two approaches** for composition:
+
+1. **Direct nesting** - Explicit pattern composition by nesting function calls
+2. **Middleware composition** - Functional composition using the `compose()` function
 
 ### Key Features
 
@@ -41,7 +46,9 @@ npm install ai-patterns
 
 ---
 
-## Basic Usage
+## Two Approaches
+
+### Direct Nesting
 
 Nest patterns together for clear, explicit control flow:
 
@@ -78,6 +85,59 @@ async function robustAI(prompt: string): Promise<string> {
   return result.value;
 }
 ```
+
+**Pros:**
+- Explicit and easy to understand
+- Full control over each pattern's options
+- Clear execution order
+
+**Cons:**
+- Can become deeply nested with many patterns
+- Less reusable (tied to specific implementation)
+
+### Middleware Composition
+
+Use the `compose()` function for functional, middleware-based composition:
+
+```typescript
+import { compose, retryMiddleware, timeoutMiddleware, fallbackMiddleware } from 'ai-patterns/composition';
+import { openai } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+
+// Create reusable composed function
+const robustAI = compose<string, string>([
+  fallbackMiddleware({ fallback: () => "Fallback response" }),
+  timeoutMiddleware({ duration: 10000 }),
+  retryMiddleware({ maxAttempts: 3, backoffStrategy: 'exponential' })
+]);
+
+// Use it multiple times
+const result = await robustAI(
+  async (prompt: string) => {
+    const { text } = await generateText({
+      model: openai('gpt-4-turbo'),
+      prompt,
+      maxRetries: 0
+    });
+    return text;
+  },
+  'Explain quantum computing'
+);
+```
+
+**Pros:**
+- Flat, readable structure
+- Highly reusable (separate concerns)
+- Easy to add/remove patterns
+- Follows functional programming principles
+
+**Cons:**
+- Requires understanding middleware concept
+- Slightly less explicit than nesting
+
+**Choose:**
+- **Direct nesting** for one-off compositions or when clarity is paramount
+- **Middleware composition** for reusable, configurable patterns
 
 ---
 

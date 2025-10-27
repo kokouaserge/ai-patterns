@@ -46,6 +46,14 @@
   ],
   "author": "Serge KOKOUA",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kokouaserge/ai-patterns.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kokouaserge/ai-patterns/issues"
+  },
+  "homepage": "https://github.com/kokouaserge/ai-patterns#readme",
   "type": "commonjs",
   "engines": {
     "node": ">=16.0.0"

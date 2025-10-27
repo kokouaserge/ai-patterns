@@ -84,5 +84,17 @@ export type { Middleware, ComposeConfig } from "./composition/compose";
 // Middleware adapters for composition
 export * from "./composition/middleware";
 
+// ===== Experimentation Patterns =====
+
+// A/B Testing Pattern
+export { abTest, InMemoryAssignmentStorage } from "./experimentation/ab-test";
+export { VariantAssignmentStrategy } from "./types/ab-test";
+
+// ===== Monitoring Patterns =====
+
+// Cost Tracking Pattern
+export { costTracking, createCostTracker, InMemoryCostStorage } from "./monitoring/cost-tracking";
+export { ModelCost } from "./types/cost-tracking";
+
 // ===== Version =====
 export const VERSION = "1.0.0";

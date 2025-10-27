@@ -17,9 +17,19 @@ import { fallback } from "../resilience/fallback";
 import { CircuitBreaker } from "../resilience/circuit-breaker";
 import { RateLimiter } from "../rate-limiting/rate-limiter";
 import { memoize } from "../caching/memoize";
+import { bulkhead } from "../resilience/bulkhead";
+import { debounce } from "../timing/debounce";
+import { throttle } from "../timing/throttle";
+import { idempotent } from "../consistency/idempotency";
+import { costTracking } from "../monitoring/cost-tracking";
 import type { RetryOptions } from "../types/retry";
 import type { CircuitBreakerOptions } from "../types/circuit-breaker";
 import type { RateLimiterOptions } from "../types/rate-limiter";
+import type { BulkheadOptions } from "../types/bulkhead";
+import type { DebounceOptions } from "../types/debounce";
+import type { ThrottleOptions } from "../types/throttle";
+import type { IdempotencyOptions } from "../types/idempotency";
+import type { CostTrackingConfig } from "../types/cost-tracking";
 
 // Re-export types for convenience
 export type {
@@ -161,6 +171,115 @@ export function cacheMiddleware<TInput = any, TOutput = any>(
   };
 }
 
+// ===== Bulkhead Middleware =====
+
+/**
+ * Bulkhead middleware - wraps the bulkhead pattern
+ * Note: Creates a new bulkhead instance for each input
+ */
+export function bulkheadMiddleware<TInput = any, TOutput = any>(
+  options: Omit<BulkheadOptions<TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const fn = bulkhead<TOutput>({
+      ...options,
+      execute: async () => await next(input),
+    });
+    return await fn();
+  };
+}
+
+// ===== Debounce Middleware =====
+
+/**
+ * Debounce middleware - wraps the debounce pattern
+ */
+export function debounceMiddleware<TInput = any, TOutput = any>(
+  options: Omit<DebounceOptions<[TInput], TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  let debouncedFn: ReturnType<typeof debounce<[TInput], TOutput>> | null = null;
+
+  return (next) => {
+    if (!debouncedFn) {
+      debouncedFn = debounce<[TInput], TOutput>({
+        ...options,
+        execute: async (input: TInput) => await next(input),
+      });
+    }
+
+    return async (input) => await debouncedFn!(input);
+  };
+}
+
+// ===== Throttle Middleware =====
+
+/**
+ * Throttle middleware - wraps the throttle pattern
+ */
+export function throttleMiddleware<TInput = any, TOutput = any>(
+  options: Omit<ThrottleOptions<[TInput], TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  let throttledFn: ReturnType<typeof throttle<[TInput], TOutput>> | null = null;
+
+  return (next) => {
+    if (!throttledFn) {
+      throttledFn = throttle<[TInput], TOutput>({
+        ...options,
+        execute: async (input: TInput) => await next(input),
+      });
+    }
+
+    return async (input) => {
+      const result = await throttledFn!(input);
+      return result!;
+    };
+  };
+}
+
+// ===== Idempotency Middleware =====
+
+/**
+ * Idempotency middleware - wraps the idempotency pattern
+ */
+export function idempotencyMiddleware<TInput = any, TOutput = any>(
+  options: Omit<IdempotencyOptions<TOutput>, "execute" | "key"> & {
+    keyFn: (input: TInput) => string;
+  }
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const key = options.keyFn(input);
+    return await idempotent<TOutput>({
+      ...options,
+      key,
+      execute: async () => await next(input),
+    });
+  };
+}
+
+// ===== Cost Tracking Middleware =====
+
+/**
+ * Cost tracking middleware - wraps the cost tracking pattern
+ */
+export function costTrackingMiddleware<TInput = any, TOutput = any>(
+  options: Omit<CostTrackingConfig<TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await costTracking<TOutput>({
+      ...options,
+      execute: async () => {
+        const value = await next(input);
+        // If the value contains tokens, extract them
+        if (typeof value === "object" && value !== null && "tokens" in value) {
+          return { value: value as TOutput, tokens: (value as any).tokens };
+        }
+        return { value };
+      },
+    });
+    return result.value;
+  };
+}
+
 // ===== Cleaner "with*" Aliases =====
 
 export const withRetry = retryMiddleware;
@@ -169,3 +288,8 @@ export const withFallback = fallbackMiddleware;
 export const withCircuitBreaker = circuitBreakerMiddleware;
 export const withRateLimiter = rateLimiterMiddleware;
 export const withCache = cacheMiddleware;
+export const withBulkhead = bulkheadMiddleware;
+export const withDebounce = debounceMiddleware;
+export const withThrottle = throttleMiddleware;
+export const withIdempotency = idempotencyMiddleware;
+export const withCostTracking = costTrackingMiddleware;

@@ -48,6 +48,15 @@ export enum ErrorCode {
   // Conditional Branch errors
   NO_MATCHING_BRANCH = "NO_MATCHING_BRANCH",
 
+  // A/B Testing errors
+  NO_VARIANTS = "NO_VARIANTS",
+  INVALID_VARIANT_WEIGHTS = "INVALID_VARIANT_WEIGHTS",
+  VARIANT_EXECUTION_FAILED = "VARIANT_EXECUTION_FAILED",
+
+  // Cost Tracking errors
+  BUDGET_EXCEEDED = "BUDGET_EXCEEDED",
+  INVALID_COST_CONFIG = "INVALID_COST_CONFIG",
+
   // Generic errors
   INVALID_CONFIGURATION = "INVALID_CONFIGURATION",
   OPERATION_FAILED = "OPERATION_FAILED",
@@ -322,6 +331,67 @@ const ERROR_RESOLUTIONS: Record<ErrorCode, ErrorResolution> = {
       "Use defaultBranch for fallback behavior",
       "Ensure at least one condition can match",
       "Consider logging unmatched inputs for debugging",
+    ],
+  },
+
+  // A/B Testing errors
+  [ErrorCode.NO_VARIANTS]: {
+    problem: "No variants provided for A/B test",
+    cause: "The variants array is empty or not provided",
+    solution:
+      "1. Provide at least one variant to test\n2. Each variant should have a name, weight, and execute function",
+    tips: [
+      "At least 2 variants are recommended for meaningful A/B tests",
+      "Ensure variant weights sum to 1.0 (they will be normalized if not)",
+    ],
+  },
+
+  [ErrorCode.INVALID_VARIANT_WEIGHTS]: {
+    problem: "Invalid variant weights configuration",
+    cause: "Variant weights must be positive numbers",
+    solution:
+      "1. Ensure all variant weights are greater than 0\n2. Weights will be normalized to sum to 1.0",
+    tips: [
+      "Example: weights of 0.5 and 0.5 = 50/50 split",
+      "Example: weights of 1, 2, 1 = 25/50/25 split",
+    ],
+  },
+
+  [ErrorCode.VARIANT_EXECUTION_FAILED]: {
+    problem: "A/B test variant execution failed",
+    cause: "The selected variant's execute function threw an error",
+    solution:
+      "1. Check the error details for the specific variant\n2. Review the variant's execute function implementation\n3. Implement error handling in variant functions\n4. Use onError callback to handle variant failures",
+    tips: [
+      "Implement fallback variants for critical operations",
+      "Log variant failures for analysis",
+      "Consider circuit breakers for unreliable variants",
+    ],
+  },
+
+  // Cost Tracking errors
+  [ErrorCode.BUDGET_EXCEEDED]: {
+    problem: "Budget limit exceeded",
+    cause: "Operation cost would exceed the configured budget limit",
+    solution:
+      "1. Wait for the budget period to reset (monthly/daily/hourly)\n2. Increase budget limits if legitimate usage requires it\n3. Optimize operations to reduce token usage\n4. Implement request queuing or prioritization",
+    tips: [
+      "Monitor budget usage patterns to set appropriate limits",
+      "Use multiple alert thresholds (50%, 80%, 95%)",
+      "Consider using cheaper models for non-critical operations",
+      "Implement rate limiting to prevent budget exhaustion",
+    ],
+  },
+
+  [ErrorCode.INVALID_COST_CONFIG]: {
+    problem: "Invalid cost tracking configuration",
+    cause: "Configuration values are invalid or out of acceptable range",
+    solution:
+      "1. Ensure costPerToken is a positive number\n2. Budget limits (monthly/daily/hourly) must be positive\n3. Alert thresholds must be between 0 and 1",
+    tips: [
+      "GPT-4 Turbo: ~$0.00003 per token",
+      "GPT-3.5 Turbo: ~$0.000001 per token",
+      "Claude 3.5 Sonnet: ~$0.000015 per token",
     ],
   },
 

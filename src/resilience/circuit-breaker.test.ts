@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { defineCircuitBreaker } from './circuit-breaker';
 import { CircuitState } from '../types/circuit-breaker';
 import { PatternError, ErrorCode } from '../types/errors';

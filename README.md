@@ -264,8 +264,35 @@ const result = await fanOut({
 });
 ```
 
+### Composing Patterns with Middleware
+
+```typescript
+import { compose, retryMiddleware, timeoutMiddleware } from 'ai-patterns/composition';
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+// Compose multiple patterns functionally
+const robustAI = compose([
+  timeoutMiddleware({ duration: 10000 }),
+  retryMiddleware({ maxAttempts: 3, backoffStrategy: 'exponential' })
+]);
+
+// Use the composed function
+const result = await robustAI(
+  async (prompt: string) => {
+    const { text } = await generateText({
+      model: openai('gpt-4-turbo'),
+      prompt
+    });
+    return text;
+  },
+  'Explain quantum computing'
+);
+```
+
 **For detailed pattern documentation:**
 
+- [Compose Pattern →](./docs/patterns/compose.md)
 - [Retry Pattern →](./docs/patterns/retry.md)
 - [Timeout Pattern →](./docs/patterns/timeout.md)
 - [Circuit Breaker →](./docs/patterns/circuit-breaker.md)

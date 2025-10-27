@@ -59,6 +59,9 @@ export enum ErrorCode {
 
   // Generic errors
   INVALID_CONFIGURATION = "INVALID_CONFIGURATION",
+  INVALID_ARGUMENT = "INVALID_ARGUMENT",
+  EXECUTION_FAILED = "EXECUTION_FAILED",
+  ALL_RETRIES_FAILED = "ALL_RETRIES_FAILED",
   OPERATION_FAILED = "OPERATION_FAILED",
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
@@ -400,6 +403,24 @@ const ERROR_RESOLUTIONS: Record<ErrorCode, ErrorResolution> = {
     problem: "Invalid pattern configuration",
     cause: "One or more configuration values are invalid",
     solution: "Review the error message for specific validation failures",
+  },
+
+  [ErrorCode.INVALID_ARGUMENT]: {
+    problem: "Invalid argument provided",
+    cause: "One or more arguments are invalid or missing",
+    solution: "Review the error message for specific validation failures",
+  },
+
+  [ErrorCode.EXECUTION_FAILED]: {
+    problem: "Execution failed",
+    cause: "The operation failed during execution",
+    solution: "Review the underlying error for details",
+  },
+
+  [ErrorCode.ALL_RETRIES_FAILED]: {
+    problem: "All retry attempts failed",
+    cause: "The operation failed on all retry attempts",
+    solution: "Review the underlying errors and consider increasing retry attempts or fixing the root cause",
   },
 
   [ErrorCode.OPERATION_FAILED]: {

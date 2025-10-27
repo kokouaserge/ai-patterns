@@ -56,13 +56,13 @@ export type MessageOptimizer = (
  */
 export interface OptimizationStrategies {
   /** Keep only the most recent N messages */
-  "sliding-window"?: (messages: Message[]) => Message[];
+  "sliding-window"?: (messages: Message[]) => Message[] | Promise<Message[]>;
   /** Summarize old messages and keep recent ones */
   "summarize-old"?: (messages: Message[]) => Message[] | Promise<Message[]>;
   /** Keep only important messages (system, mentions, commands) */
-  "prioritize-important"?: (messages: Message[]) => Message[];
+  "prioritize-important"?: (messages: Message[]) => Message[] | Promise<Message[]>;
   /** Remove messages from the middle of conversation */
-  "truncate-middle"?: (messages: Message[]) => Message[];
+  "truncate-middle"?: (messages: Message[]) => Message[] | Promise<Message[]>;
   /** Custom optimization strategy */
   custom?: MessageOptimizer;
 }

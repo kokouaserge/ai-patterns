@@ -11,7 +11,7 @@ We provide developers with battle-tested tools for resilient AI workflows: retry
 
 ## Features
 
-✨ **15 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, and more
+✨ **17 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, A/B Testing, Cost Tracking, and more
 🎨 **Elegant Composition** - Compose patterns together for complex workflows
 🔒 **Type-Safe** - Full TypeScript support with generics and strict mode
 🧩 **Composable** - Patterns work together seamlessly for robust workflows
@@ -19,6 +19,8 @@ We provide developers with battle-tested tools for resilient AI workflows: retry
 🪶 **Lightweight** - Zero dependencies, minimal overhead
 ⚡ **Production-Ready** - Build solid AI applications with confidence
 🎯 **Developer-Friendly** - Inspired by Vercel AI SDK's excellent DX
+💰 **Cost Control** - Track and control AI spending in real-time
+🧪 **Experimentation** - A/B test prompts and models to optimize performance
 
 ## Installation
 
@@ -201,6 +203,13 @@ const result = await robustAI(callAI, "Explain quantum computing");
 | **[humanInTheLoop](#human-in-the-loop)** | AI → Human escalation | Content moderation | [📖](./docs/patterns/human-in-the-loop.md) |
 | **[idempotency](#idempotency)** | Prevent duplicate operations | Payment processing | [📖](./docs/patterns/idempotency.md) |
 
+### Experimentation & Monitoring
+
+| Pattern | Description | Use Case | Docs |
+|---------|-------------|----------|------|
+| **[abTest](#ab-testing)** | Test multiple variants simultaneously | Prompt optimization, model selection | [📖](./docs/patterns/ab-test.md) |
+| **[costTracking](#cost-tracking)** | Monitor and control AI spending | Budget management, cost optimization | [📖](./docs/patterns/cost-tracking.md) |
+
 ---
 
 ## Pattern Examples
@@ -308,6 +317,8 @@ const result = await robustAI(
 - [Saga →](./docs/patterns/saga.md)
 - [Human-in-the-Loop →](./docs/patterns/human-in-the-loop.md)
 - [Idempotency →](./docs/patterns/idempotency.md)
+- [A/B Testing →](./docs/patterns/ab-test.md)
+- [Cost Tracking →](./docs/patterns/cost-tracking.md)
 
 **Runnable examples:**
 - [View all examples →](./examples/basic)
@@ -327,6 +338,12 @@ Each pattern has a simple runnable example:
 - [saga-simple.ts](./examples/basic/saga-simple.ts)
 - [human-in-loop-simple.ts](./examples/basic/human-in-loop-simple.ts)
 - [idempotency-simple.ts](./examples/basic/idempotency-simple.ts)
+- [ab-test-simple.ts](./examples/basic/ab-test-simple.ts)
+- [cost-tracking-simple.ts](./examples/basic/cost-tracking-simple.ts)
+
+### Advanced Examples
+
+- [ab-test-with-cost-tracking.ts](./examples/composition/ab-test-with-cost-tracking.ts) - Combine A/B testing with cost tracking for ROI optimization
 
 ### Real-World Examples
 
@@ -350,6 +367,8 @@ Coming soon:
 - [Saga Pattern](./docs/patterns/saga.md)
 - [Human-in-the-Loop Pattern](./docs/patterns/human-in-the-loop.md)
 - [Idempotency Pattern](./docs/patterns/idempotency.md)
+- [A/B Testing Pattern](./docs/patterns/ab-test.md)
+- [Cost Tracking Pattern](./docs/patterns/cost-tracking.md)
 
 ### Guides
 

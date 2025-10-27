@@ -42,7 +42,12 @@
     "fan-out",
     "ai-agents",
     "llm",
-    "ai-sdk"
+    "ai-sdk",
+    "ab-testing",
+    "experimentation",
+    "cost-tracking",
+    "budget-control",
+    "monitoring"
   ],
   "author": "Serge KOKOUA",
   "license": "MIT",

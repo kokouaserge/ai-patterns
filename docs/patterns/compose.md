@@ -20,7 +20,7 @@ Combine multiple patterns together to create reusable, composable AI workflows.
 The compose pattern allows you to **combine multiple resilience patterns** into a single, reusable function. Instead of nesting patterns deeply, compose them into a clean pipeline.
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns/composition';
+import { compose, retry, timeout, fallback } from 'ai-patterns';
 
 // Create a reusable composed function
 const robustAI = compose([
@@ -64,7 +64,7 @@ npm install ai-patterns
 ### Step 1: Import compose and patterns
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns/composition';
+import { compose, retry, timeout, fallback } from 'ai-patterns';
 ```
 
 ### Step 2: Create a composed function
@@ -128,8 +128,6 @@ You can compose any of these patterns together:
 Automatically retry failed operations with backoff strategies.
 
 ```typescript
-import { retry } from 'ai-patterns/composition';
-
 retry({
   maxAttempts: 3,
   backoffStrategy: 'exponential',
@@ -144,8 +142,6 @@ retry({
 Add timeout protection to operations.
 
 ```typescript
-import { timeout } from 'ai-patterns/composition';
-
 timeout({
   duration: 5000,
   message: 'Operation timed out'
@@ -159,8 +155,6 @@ timeout({
 Provide fallback values or alternative strategies when operations fail.
 
 ```typescript
-import { fallback } from 'ai-patterns/composition';
-
 fallback({
   fallback: (input) => `Fallback for: ${input}`,
   shouldFallback: (error) => error.message.includes('timeout')
@@ -174,8 +168,6 @@ fallback({
 Prevent cascading failures with circuit breaker pattern.
 
 ```typescript
-import { circuitBreaker } from 'ai-patterns/composition';
-
 circuitBreaker({
   failureThreshold: 5,
   resetTimeout: 60000
@@ -189,8 +181,6 @@ circuitBreaker({
 Control request rate to avoid overwhelming services.
 
 ```typescript
-import { rateLimiter } from 'ai-patterns/composition';
-
 rateLimiter({
   requests: 10,
   window: 1000
@@ -204,8 +194,6 @@ rateLimiter({
 Cache expensive operations with TTL support.
 
 ```typescript
-import { cache } from 'ai-patterns/composition';
-
 cache({
   ttl: 300000,
   keyFn: (input) => JSON.stringify(input)
@@ -221,7 +209,7 @@ cache({
 ### Example 1: Production AI Pipeline
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns/composition';
+import { compose, retry, timeout, fallback } from 'ai-patterns';
 import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
@@ -257,7 +245,7 @@ console.log(result);
 ### Example 2: Multi-Provider Fallback
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns/composition';
+import { compose, retry, timeout, fallback } from 'ai-patterns';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
@@ -294,7 +282,7 @@ const result = await multiProviderAI(
 ### Example 3: API with Circuit Breaker
 
 ```typescript
-import { compose, retry, timeout, circuitBreaker } from 'ai-patterns/composition';
+import { compose, retry, timeout, circuitBreaker } from 'ai-patterns';
 
 const robustAPI = compose([
   circuitBreaker({
@@ -322,7 +310,7 @@ const posts = await robustAPI(
 ### Example 4: Rate-Limited AI Agent
 
 ```typescript
-import { compose, retry, timeout, rateLimiter, cache } from 'ai-patterns/composition';
+import { compose, retry, timeout, rateLimiter, cache } from 'ai-patterns';
 
 const aiAgent = compose([
   cache({ ttl: 300000 }),  // 5 min cache
@@ -348,7 +336,7 @@ for (const task of tasks) {
 ### Example 5: Environment-Specific Configurations
 
 ```typescript
-import { compose, retry, timeout, fallback } from 'ai-patterns/composition';
+import { compose, retry, timeout, fallback } from 'ai-patterns';
 
 // Development config - more permissive
 const devPipeline = compose([

@@ -108,7 +108,12 @@ async function main() {
       console.log("  🚀 Processing request...");
 
       const result = await rateLimiter({ prompt: prompts[i] });
-      console.log(`  💬 ${result.value.slice(0, 100)}...`);
+
+      if (result.allowed && result.value) {
+        console.log(`  💬 ${result.value.slice(0, 100)}...`);
+      } else {
+        console.log(`  ⏱️  Rate limited. Retry after ${result.retryAfter}ms`);
+      }
     } catch (error) {
       console.error(
         `  ❌ Request failed: ${error instanceof Error ? error.message : String(error)}`

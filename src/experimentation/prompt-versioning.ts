@@ -99,24 +99,11 @@ export class InMemoryPromptVersionStorage implements PromptVersionStorage {
 const defaultStorage = new InMemoryPromptVersionStorage();
 
 /**
- * Hash function for consistent version selection
- */
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
-}
-
-/**
  * Select a version based on rollout percentages
  */
 function selectVersion(
   versions: Record<string, any>,
-  promptId: string,
+  _promptId: string,
   random: number = Math.random()
 ): string {
   const activeVersions = Object.entries(versions)

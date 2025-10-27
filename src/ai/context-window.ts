@@ -27,8 +27,6 @@ import type {
   SmartContextWindowConfig,
   SmartContextWindowResult,
   Message,
-  TokenCounter,
-  MessageOptimizer,
 } from "../types/context-window";
 import { ContextStrategy } from "../types/context-window";
 import { defaultLogger } from "../types/common";
@@ -139,8 +137,8 @@ async function optimizeMessages(
     return await strategies.custom(messages, currentTokens, config.maxTokens);
   }
 
-  // Use user-provided strategy override
-  if (strategies[strategy]) {
+  // Use user-provided strategy override for built-in strategies
+  if (strategy !== ContextStrategy.CUSTOM && strategies[strategy]) {
     const result = strategies[strategy]!(messages);
     return result instanceof Promise ? await result : result;
   }

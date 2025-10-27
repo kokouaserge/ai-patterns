@@ -137,19 +137,26 @@ console.log(breaker.getState()); // Check circuit state
 
 ### Pattern Composition
 
-Nest patterns together for robust workflows:
+Compose patterns together for robust workflows using the `compose()` function:
 
 ```typescript
-const result = await retry({
-  execute: async () => {
-    return await timeout({
-      execute: () => callAPI(),
-      timeoutMs: 5000
-    });
-  },
-  maxAttempts: 3
-});
+import { compose, withRetry, withTimeout, withFallback } from 'ai-patterns';
+
+// Create a reusable composed function
+const robustAI = compose<string, string>([
+  withFallback({ fallback: () => "Sorry, service unavailable" }),
+  withTimeout({ duration: 10000 }),
+  withRetry({
+    maxAttempts: 3,
+    backoffStrategy: "exponential",
+  })
+]);
+
+// Use it anywhere
+const result = await robustAI(callAI, "Explain quantum computing");
 ```
+
+> **Tip**: You can also nest patterns directly if you prefer explicit control flow.
 
 **For advanced composition strategies:**
 - [Composition Guide →](./docs/guides/composition.md)

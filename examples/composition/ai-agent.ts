@@ -1,19 +1,20 @@
 /**
- * AI Agent with Composition
+ * AI Agent with Compose
  *
- * This example demonstrates a production-ready AI agent that uses
- * composition to combine multiple resilience patterns directly.
+ * This example demonstrates a production-ready AI agent using compose()
+ * with multiple middleware for structured output generation.
  */
 
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import {
-  retry,
-  timeout,
-  defineCircuitBreaker,
-  memoize,
-  fallback,
+  compose,
+  withRetry,
+  withTimeout,
+  withFallback,
+  withCircuitBreaker,
+  withCache,
   BackoffStrategy,
 } from "../../src";
 
@@ -28,142 +29,89 @@ const TaskAnalysisSchema = z.object({
 
 type TaskAnalysis = z.infer<typeof TaskAnalysisSchema>;
 
-interface AgentInput {
-  task: string;
-  context?: Record<string, any>;
-}
-
 async function main() {
-  console.log("🤖 AI Agent with Composition\n");
+  console.log("🤖 AI Agent with Compose\n");
 
-  // Create a memoized AI function (caching layer)
-  const cachedAgent = memoize<[AgentInput], TaskAnalysis>({
-    execute: async (input: AgentInput) => {
-      const { object } = await generateObject({
-        model: openai("gpt-4-turbo"),
-        schema: TaskAnalysisSchema,
-        prompt: `Analyze this task: "${input.task}"\n\nContext: ${JSON.stringify(input.context || {})}`,
-        maxRetries: 0,
-      });
-      return object;
-    },
-    ttl: 10 * 60 * 1000, // 10 minutes cache
-    keyFn: (input) => input.task,
-    onCacheHit: () => console.log("  ⚡ Cache hit!"),
-  });
+  // Create a robust AI agent pipeline using compose()
+  const agent = compose<string, TaskAnalysis>([
+    withCircuitBreaker({
+      failureThreshold: 5,
+      openDuration: 60000,
+      halfOpenMaxAttempts: 2,
+      onOpen: () => console.log("  🔴 Circuit breaker opened"),
+      onClose: () => console.log("  🟢 Circuit breaker closed"),
+      onHalfOpen: () => console.log("  🟡 Circuit breaker half-open"),
+    }),
+    withFallback({
+      fallback: () => ({
+        category: "general" as const,
+        complexity: "medium" as const,
+        estimatedTime: 30,
+        steps: [
+          "Analyze the task requirements",
+          "Break down into smaller steps",
+          "Execute each step methodically",
+          "Review and verify results",
+        ],
+        confidence: 0.5,
+      }),
+    }),
+    withTimeout({
+      duration: 15000,
+      message: "Agent analysis timed out",
+    }),
+    withRetry({
+      maxAttempts: 3,
+      backoffStrategy: BackoffStrategy.EXPONENTIAL,
+      initialDelay: 1000,
+      maxDelay: 5000,
+    }),
+    withCache({
+      ttl: 10 * 60 * 1000, // 10 minutes cache
+      keyFn: (task) => task,
+    }),
+  ]);
 
-  // Create circuit breaker (stateful pattern)
-  const circuitBreaker = defineCircuitBreaker<TaskAnalysis>({
-    execute: async (input: AgentInput) => {
-      return await cachedAgent(input);
-    },
-    failureThreshold: 5,
-    resetTimeout: 60000,
-    halfOpenAttempts: 2,
-    onOpen: () => console.log("  🔴 Circuit breaker opened"),
-    onClose: () => console.log("  🟢 Circuit breaker closed"),
-    onHalfOpen: () => console.log("  🟡 Circuit breaker half-open"),
-  });
-
-  // Compose patterns together
-  async function agent(input: AgentInput): Promise<TaskAnalysis> {
-    console.log("  🔍 Analyzing task...");
-    const startTime = Date.now();
-
-    try {
-      // Fallback pattern (outermost)
-      const result = await fallback<TaskAnalysis>({
-        execute: async () => {
-          // Timeout pattern
-          return await timeout<TaskAnalysis>({
-            execute: async () => {
-              // Retry pattern
-              const retryResult = await retry<TaskAnalysis>({
-                execute: async () => {
-                  // Circuit breaker + cache (innermost)
-                  return await circuitBreaker(input);
-                },
-                maxAttempts: 3,
-                backoffStrategy: BackoffStrategy.EXPONENTIAL,
-                initialDelay: 1000,
-                maxDelay: 5000,
-                shouldRetry: (error, attempt) => {
-                  console.log(`  🔄 Retry attempt ${attempt} after error: ${error.message}`);
-                  // Don't retry on validation errors
-                  return !error.message.includes("validation");
-                },
-              });
-              return retryResult.value;
-            },
-            timeoutMs: 15000,
-            errorMessage: "Agent analysis timed out",
-          });
-        },
-        fallback: async () => {
-          console.log("  ⚠️  Using fallback analysis");
-          return {
-            category: "general" as const,
-            complexity: "medium" as const,
-            estimatedTime: 30,
-            steps: [
-              "Analyze the task requirements",
-              "Break down into smaller steps",
-              "Execute each step methodically",
-              "Review and verify results",
-            ],
-            confidence: 0.5,
-          };
-        },
-        shouldFallback: (error) => {
-          // Only fallback for certain errors
-          return error.message.includes("timeout") || error.message.includes("circuit");
-        },
-      });
-
-      const duration = Date.now() - startTime;
-      console.log(`  ✅ Analysis complete (${duration}ms)`);
-      console.log(`  📊 Confidence: ${(result.value.confidence * 100).toFixed(0)}%`);
-
-      return result.value;
-    } catch (error) {
-      console.error(`  ❌ Agent error: ${(error as Error).message}`);
-      throw error;
-    }
-  }
+  // Define the AI agent operation
+  const analyzeTask = async (task: string): Promise<TaskAnalysis> => {
+    console.log(`  🔍 Analyzing task: "${task}"`);
+    const { object } = await generateObject({
+      model: openai("gpt-4-turbo"),
+      schema: TaskAnalysisSchema,
+      prompt: `Analyze this task: "${task}"`,
+      maxRetries: 0,
+    });
+    return object;
+  };
 
   // Test the agent with various tasks
   const tasks = [
-    {
-      task: "Build a REST API for a todo application with authentication",
-      context: { language: "TypeScript", framework: "Express" },
-    },
-    {
-      task: "Write a blog post about climate change",
-      context: { audience: "general public", tone: "informative" },
-    },
-    {
-      task: "Analyze sales data and identify trends",
-      context: { dataSize: "10000 records", period: "last quarter" },
-    },
+    "Build a REST API for a todo application with authentication",
+    "Write a blog post about climate change",
+    "Analyze sales data and identify trends",
   ];
 
-  for (const [index, { task, context }] of tasks.entries()) {
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i];
     console.log(`\n${"=".repeat(60)}`);
-    console.log(`\n📝 Task ${index + 1}: ${task}`);
-    console.log(`   Context: ${JSON.stringify(context)}\n`);
+    console.log(`\n📝 Task ${i + 1}: ${task}\n`);
 
     try {
-      const analysis = await agent({ task, context });
+      const startTime = Date.now();
+      const analysis = await agent(analyzeTask, task);
+      const duration = Date.now() - startTime;
 
       // Display results
       console.log(`\n  📋 Analysis Results:`);
       console.log(`     Category: ${analysis.category}`);
       console.log(`     Complexity: ${analysis.complexity}`);
       console.log(`     Estimated Time: ${analysis.estimatedTime} minutes`);
+      console.log(`     Confidence: ${(analysis.confidence * 100).toFixed(0)}%`);
       console.log(`     Steps:`);
-      analysis.steps.forEach((step, i) => {
-        console.log(`       ${i + 1}. ${step}`);
+      analysis.steps.forEach((step, idx) => {
+        console.log(`       ${idx + 1}. ${step}`);
       });
+      console.log(`\n  ⏱️  Duration: ${duration}ms`);
     } catch (error) {
       console.error(
         `\n  ❌ Failed to analyze task: ${error instanceof Error ? error.message : String(error)}`
@@ -171,7 +119,7 @@ async function main() {
     }
 
     // Small delay between tasks
-    if (index < tasks.length - 1) {
+    if (i < tasks.length - 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
@@ -179,11 +127,15 @@ async function main() {
   // Test cache by repeating first task
   console.log(`\n${"=".repeat(60)}`);
   console.log(`\n🔄 Repeating first task (should use cache):`);
-  console.log(`📝 Task: ${tasks[0].task}\n`);
+  console.log(`📝 Task: ${tasks[0]}\n`);
 
-  const cachedAnalysis = await agent({ task: tasks[0].task, context: tasks[0].context });
+  const startTime = Date.now();
+  const cachedAnalysis = await agent(analyzeTask, tasks[0]);
+  const duration = Date.now() - startTime;
 
   console.log(`  📊 Confidence: ${(cachedAnalysis.confidence * 100).toFixed(0)}%`);
+  console.log(`  ⏱️  Duration: ${duration}ms`);
+  console.log("  ⚡ (Retrieved from cache - much faster!)");
 
   console.log(`\n${"=".repeat(60)}`);
   console.log("\n✨ AI Agent example completed successfully!");

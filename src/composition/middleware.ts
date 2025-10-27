@@ -160,3 +160,12 @@ export function cacheMiddleware<TInput = any, TOutput = any>(
     return async (input) => await memoized(input);
   };
 }
+
+// ===== Cleaner "with*" Aliases =====
+
+export const withRetry = retryMiddleware;
+export const withTimeout = timeoutMiddleware;
+export const withFallback = fallbackMiddleware;
+export const withCircuitBreaker = circuitBreakerMiddleware;
+export const withRateLimiter = rateLimiterMiddleware;
+export const withCache = cacheMiddleware;

@@ -15,16 +15,16 @@ export type { Middleware, ComposeConfig };
  *
  * @example
  * ```typescript
- * import { compose, retry, timeout, circuitBreaker } from 'ai-patterns';
+ * import { compose, withTimeout, withRetry, withCircuitBreaker } from 'ai-patterns';
  *
  * const robustAPI = compose([
- *   timeout({ duration: 5000 }),
- *   retry({ maxAttempts: 3 }),
- *   circuitBreaker({ failureThreshold: 5 })
+ *   withCircuitBreaker({ failureThreshold: 5 }),
+ *   withTimeout({ duration: 5000 }),
+ *   withRetry({ maxAttempts: 3 })
  * ]);
  *
  * const result = await robustAPI(
- *   async () => fetch('/api/data'),
+ *   async () => fetch('/api/data').then(r => r.json()),
  *   undefined
  * );
  * ```

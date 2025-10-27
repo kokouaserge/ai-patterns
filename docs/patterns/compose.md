@@ -16,15 +16,14 @@ Compose multiple patterns together to build robust, production-ready AI workflow
 
 ## Overview
 
-The compose pattern allows you to combine multiple resilience patterns into a single, reusable function. You can compose patterns either by **nesting them directly** (recommended for simple cases) or using **middleware composition** (for complex workflows).
+The compose pattern allows you to combine multiple resilience patterns into a single, reusable function by **nesting them directly** for clear and explicit control flow.
 
 ### Key Features
 
 - **Direct pattern composition** - Nest patterns together for clear control flow
-- **Middleware composition** - Functional composition for advanced workflows
 - **Type-safe** - Full TypeScript support with generics
-- **Right-to-left composition** - Mathematical function composition style
-- **Lifecycle hooks** - Monitor composition execution
+- **Composable** - Patterns work together seamlessly
+- **Observable** - Built-in lifecycle callbacks for monitoring
 
 ### Use Cases
 
@@ -43,8 +42,6 @@ npm install ai-patterns
 ---
 
 ## Basic Usage
-
-### Direct Pattern Composition (Recommended)
 
 Nest patterns together for clear, explicit control flow:
 
@@ -82,29 +79,9 @@ async function robustAI(prompt: string): Promise<string> {
 }
 ```
 
-### Middleware Composition (Advanced)
-
-For complex workflows, use the `compose()` function:
-
-```typescript
-import { compose, retryMiddleware, timeoutMiddleware } from 'ai-patterns';
-
-const pipeline = compose([
-  timeoutMiddleware({ duration: 10000 }),
-  retryMiddleware({ maxAttempts: 3 })
-]);
-
-const result = await pipeline(
-  async (input) => generateText({ model: openai('gpt-4-turbo'), prompt: input }),
-  'Your prompt here'
-);
-```
-
 ---
 
 ## API Reference
-
-### Direct Composition (Pattern Nesting)
 
 Simply nest pattern function calls:
 
@@ -118,39 +95,6 @@ const result = await pattern1({
     });
   }
 });
-```
-
-### `compose<TInput, TOutput>(middlewares, config?)`
-
-Create a composed function from middleware.
-
-#### Parameters
-
-```typescript
-interface ComposeConfig<TInput, TOutput> {
-  /**
-   * Called before execution starts
-   */
-  onStart?: () => void | Promise<void>;
-
-  /**
-   * Called after successful execution
-   */
-  onComplete?: (result: TOutput, duration: number) => void | Promise<void>;
-
-  /**
-   * Called on error
-   */
-  onError?: (error: Error) => void | Promise<void>;
-}
-```
-
-#### Returns
-
-A composed function that accepts an execution function and input:
-
-```typescript
-(execute: (input: TInput) => TOutput | Promise<TOutput>, input?: TInput) => Promise<TOutput>
 ```
 
 ---
@@ -210,42 +154,7 @@ const response = await robustAI({ prompt: 'Explain quantum computing' });
 console.log(response);
 ```
 
-### Example 2: Middleware Composition with Lifecycle Hooks
-
-```typescript
-import {
-  compose,
-  retryMiddleware,
-  timeoutMiddleware,
-  fallbackMiddleware
-} from 'ai-patterns';
-
-const pipeline = compose(
-  [
-    fallbackMiddleware({ fallback: async () => getCachedResponse() }),
-    timeoutMiddleware({ duration: 10000 }),
-    retryMiddleware({ maxAttempts: 3 })
-  ],
-  {
-    onStart: () => console.log('🚀 Starting AI request'),
-    onComplete: (result, duration) => {
-      console.log(`✅ Completed in ${duration}ms`);
-      metrics.recordLatency(duration);
-    },
-    onError: (error) => {
-      console.error('❌ Pipeline failed:', error);
-      alerting.trigger('ai-pipeline-failure', { error });
-    }
-  }
-);
-
-const result = await pipeline(
-  async (input) => callAI(input),
-  { prompt: 'Your prompt here' }
-);
-```
-
-### Example 3: Multi-Provider Fallback
+### Example 2: Multi-Provider Fallback
 
 ```typescript
 import { retry, timeout, fallback, BackoffStrategy } from 'ai-patterns';
@@ -291,7 +200,7 @@ async function multiProviderAI(prompt: string): Promise<string> {
 }
 ```
 
-### Example 4: Stateful Pattern Composition
+### Example 3: Stateful Pattern Composition
 
 ```typescript
 import { defineCircuitBreaker, retry, timeout } from 'ai-patterns';
@@ -364,14 +273,7 @@ console.log(breaker.getState()); // Check circuit state
    await breaker(input2);
    ```
 
-4. **Add lifecycle hooks for monitoring**
-   ```typescript
-   compose([...middlewares], {
-     onComplete: (result, duration) => metrics.record(duration)
-   });
-   ```
-
-5. **Cache expensive operations**
+4. **Cache expensive operations**
    ```typescript
    const cached = memoize({ execute: expensiveAI, ttl: 300000 });
    ```
@@ -404,15 +306,6 @@ console.log(breaker.getState()); // Check circuit state
    console.log(result.value); // Actual value
    ```
 
-4. **Don't use middleware composition for simple cases**
-   ```typescript
-   // Overkill - just nest directly
-   const pipeline = compose([retryMiddleware({ maxAttempts: 3 })]);
-
-   // Better
-   await retry({ execute: async () => operation(), maxAttempts: 3 });
-   ```
-
 ### Production Checklist
 
 - [ ] Patterns composed in logical order
@@ -421,7 +314,6 @@ console.log(breaker.getState()); // Check circuit state
 - [ ] Circuit breaker for external services
 - [ ] Fallback strategy defined
 - [ ] Caching for expensive operations
-- [ ] Lifecycle hooks for monitoring
 - [ ] Error handling implemented
 
 ---
@@ -473,7 +365,6 @@ import { memoize } from 'ai-patterns';
 ## Examples
 
 - [Basic Composition Example](../../examples/composition/basic-compose.ts)
-- [Advanced Middleware Composition](../../examples/composition/advanced-compose.ts)
 - [Multi-Provider Fallback](../../examples/composition/multi-provider.ts)
 
 ---

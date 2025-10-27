@@ -59,7 +59,7 @@ export interface FallbackMiddlewareOptions<TInput = any, TOutput = any> {
    * Predicate to determine if fallback should be used
    * @default () => true
    */
-  shouldFallback?: (error: Error) => boolean | Promise<boolean>;
+  shouldFallback?: (error: Error) => boolean;
 }
 
 /**

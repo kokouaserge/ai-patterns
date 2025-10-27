@@ -24,7 +24,7 @@ interface IdempotencyInternalOptions<T = any> {
   logger?: Logger;
   concurrentBehavior?: ConcurrentBehavior;
   waitTimeout?: number;
-  onCacheHit?: (key: string, record: IdempotencyRecord<T>) => void;
+  onCacheHit?: (key: string) => void;
   onCacheMiss?: (key: string) => void;
 }
 

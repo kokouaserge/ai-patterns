@@ -17,9 +17,25 @@ import { fallback } from "../resilience/fallback";
 import { CircuitBreaker } from "../resilience/circuit-breaker";
 import { RateLimiter } from "../rate-limiting/rate-limiter";
 import { memoize } from "../caching/memoize";
+import { bulkhead } from "../resilience/bulkhead";
+import { debounce } from "../timing/debounce";
+import { throttle } from "../timing/throttle";
+import { idempotent } from "../consistency/idempotency";
+import { costTracking } from "../monitoring/cost-tracking";
+import { versionedPrompt } from "../experimentation/prompt-versioning";
+import { validateResponse } from "../validation/response-validation";
+import { smartContextWindow } from "../ai/context-window";
 import type { RetryOptions } from "../types/retry";
 import type { CircuitBreakerOptions } from "../types/circuit-breaker";
 import type { RateLimiterOptions } from "../types/rate-limiter";
+import type { BulkheadOptions } from "../types/bulkhead";
+import type { DebounceOptions } from "../types/debounce";
+import type { ThrottleOptions } from "../types/throttle";
+import type { IdempotencyOptions } from "../types/idempotency";
+import type { CostTrackingConfig } from "../types/cost-tracking";
+import type { PromptVersioningConfig, PromptVersion } from "../types/prompt-versioning";
+import type { ValidateResponseConfig, ResponseValidator } from "../types/response-validation";
+import type { SmartContextWindowConfig, Message, ContextStrategy } from "../types/context-window";
 
 // Re-export types for convenience
 export type {
@@ -161,6 +177,212 @@ export function cacheMiddleware<TInput = any, TOutput = any>(
   };
 }
 
+// ===== Bulkhead Middleware =====
+
+/**
+ * Bulkhead middleware - wraps the bulkhead pattern
+ * Note: Creates a new bulkhead instance for each input
+ */
+export function bulkheadMiddleware<TInput = any, TOutput = any>(
+  options: Omit<BulkheadOptions<TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const fn = bulkhead<TOutput>({
+      ...options,
+      execute: async () => await next(input),
+    });
+    return await fn();
+  };
+}
+
+// ===== Debounce Middleware =====
+
+/**
+ * Debounce middleware - wraps the debounce pattern
+ */
+export function debounceMiddleware<TInput = any, TOutput = any>(
+  options: Omit<DebounceOptions<[TInput], TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  let debouncedFn: ReturnType<typeof debounce<[TInput], TOutput>> | null = null;
+
+  return (next) => {
+    if (!debouncedFn) {
+      debouncedFn = debounce<[TInput], TOutput>({
+        ...options,
+        execute: async (input: TInput) => await next(input),
+      });
+    }
+
+    return async (input) => await debouncedFn!(input);
+  };
+}
+
+// ===== Throttle Middleware =====
+
+/**
+ * Throttle middleware - wraps the throttle pattern
+ */
+export function throttleMiddleware<TInput = any, TOutput = any>(
+  options: Omit<ThrottleOptions<[TInput], TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  let throttledFn: ReturnType<typeof throttle<[TInput], TOutput>> | null = null;
+
+  return (next) => {
+    if (!throttledFn) {
+      throttledFn = throttle<[TInput], TOutput>({
+        ...options,
+        execute: async (input: TInput) => await next(input),
+      });
+    }
+
+    return async (input) => {
+      const result = await throttledFn!(input);
+      return result!;
+    };
+  };
+}
+
+// ===== Idempotency Middleware =====
+
+/**
+ * Idempotency middleware - wraps the idempotency pattern
+ */
+export function idempotencyMiddleware<TInput = any, TOutput = any>(
+  options: Omit<IdempotencyOptions<TOutput>, "execute" | "key"> & {
+    keyFn: (input: TInput) => string;
+  }
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const key = options.keyFn(input);
+    return await idempotent<TOutput>({
+      ...options,
+      key,
+      execute: async () => await next(input),
+    });
+  };
+}
+
+// ===== Cost Tracking Middleware =====
+
+/**
+ * Cost tracking middleware - wraps the cost tracking pattern
+ */
+export function costTrackingMiddleware<TInput = any, TOutput = any>(
+  options: Omit<CostTrackingConfig<TOutput>, "execute">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await costTracking<TOutput>({
+      ...options,
+      execute: async () => {
+        const value = await next(input);
+        // If the value contains tokens, extract them
+        if (typeof value === "object" && value !== null && "tokens" in value) {
+          return { value: value as TOutput, tokens: (value as any).tokens };
+        }
+        return { value };
+      },
+    });
+    return result.value;
+  };
+}
+
+// ===== Prompt Versioning Middleware =====
+
+/**
+ * Prompt versioning middleware - wraps the versionedPrompt pattern
+ */
+export function promptVersioningMiddleware<TInput = any, TOutput = any>(
+  options: {
+    promptId: string;
+    versions: Record<string, PromptVersion>;
+    getPromptForInput?: (input: TInput) => string;
+  } & Omit<PromptVersioningConfig<TOutput>, "execute" | "promptId" | "versions">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await versionedPrompt<TOutput>({
+      promptId: options.promptId,
+      versions: options.versions,
+      execute: async (prompt, version) => {
+        // Pass the selected prompt to the next middleware/function
+        // The input can be enhanced with the prompt if needed
+        return await next(input);
+      },
+      storage: options.storage,
+      onVersionUsed: options.onVersionUsed,
+      onSuccess: options.onSuccess,
+      onError: options.onError,
+      autoRollback: options.autoRollback,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
+// ===== Response Validation Middleware =====
+
+/**
+ * Response validation middleware - wraps the validateResponse pattern
+ */
+export function responseValidationMiddleware<TInput = any, TOutput = any>(
+  options: {
+    validators: ResponseValidator<TOutput>[];
+  } & Omit<ValidateResponseConfig<TOutput>, "execute" | "validators">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const result = await validateResponse<TOutput>({
+      execute: async () => await next(input),
+      validators: options.validators,
+      maxRetries: options.maxRetries,
+      retryDelayMs: options.retryDelayMs,
+      parallel: options.parallel,
+      onValidationFailed: options.onValidationFailed,
+      onValidatorPassed: options.onValidatorPassed,
+      onValidationSuccess: options.onValidationSuccess,
+      onAllRetriesFailed: options.onAllRetriesFailed,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
+// ===== Context Window Middleware =====
+
+/**
+ * Context window middleware - wraps the smartContextWindow pattern
+ * Useful for managing message history in chat applications
+ */
+export function contextWindowMiddleware<TInput = any, TOutput = any>(
+  options: {
+    getMessages: (input: TInput) => Message[];
+    maxTokens: number;
+    strategy?: ContextStrategy;
+  } & Omit<SmartContextWindowConfig<TOutput>, "execute" | "messages" | "maxTokens" | "strategy">
+): Middleware<TInput, TOutput> {
+  return (next) => async (input) => {
+    const messages = options.getMessages(input);
+
+    const result = await smartContextWindow<TOutput>({
+      execute: async (optimizedMessages) => {
+        // The next function should receive the optimized messages
+        // This can be done by enhancing the input or by convention
+        return await next(input);
+      },
+      messages,
+      maxTokens: options.maxTokens,
+      strategy: options.strategy,
+      strategies: options.strategies,
+      tokenCounter: options.tokenCounter,
+      keepRecentCount: options.keepRecentCount,
+      summarizeOldCount: options.summarizeOldCount,
+      summarizer: options.summarizer,
+      onTruncation: options.onTruncation,
+      onOptimization: options.onOptimization,
+      logger: options.logger,
+    });
+    return result.value;
+  };
+}
+
 // ===== Cleaner "with*" Aliases =====
 
 export const withRetry = retryMiddleware;
@@ -169,3 +391,11 @@ export const withFallback = fallbackMiddleware;
 export const withCircuitBreaker = circuitBreakerMiddleware;
 export const withRateLimiter = rateLimiterMiddleware;
 export const withCache = cacheMiddleware;
+export const withBulkhead = bulkheadMiddleware;
+export const withDebounce = debounceMiddleware;
+export const withThrottle = throttleMiddleware;
+export const withIdempotency = idempotencyMiddleware;
+export const withCostTracking = costTrackingMiddleware;
+export const withPromptVersioning = promptVersioningMiddleware;
+export const withResponseValidation = responseValidationMiddleware;
+export const withContextWindow = contextWindowMiddleware;

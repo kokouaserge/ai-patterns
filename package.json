@@ -1,13 +1,66 @@
 {
-  "name": "packages",
+  "name": "ai-patterns",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Production-ready TypeScript patterns to build solid and robust AI applications. Retry logic, circuit breakers, rate limiting, human-in-the-loop escalation, and more—all with complete type safety.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run clean && npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "keywords": [
+    "ai",
+    "ai-patterns",
+    "typescript",
+    "vercel-ai-sdk",
+    "openai",
+    "anthropic",
+    "claude",
+    "gpt-4",
+    "retry",
+    "circuit-breaker",
+    "rate-limiting",
+    "human-in-the-loop",
+    "workflows",
+    "ai-workflows",
+    "resilience",
+    "error-handling",
+    "type-safe",
+    "production-ready",
+    "robust",
+    "solid",
+    "idempotency",
+    "timeout",
+    "saga",
+    "fan-out",
+    "ai-agents",
+    "llm",
+    "ai-sdk"
+  ],
+  "author": "Serge KOKOUA",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }

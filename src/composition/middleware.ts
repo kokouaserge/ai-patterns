@@ -56,11 +56,12 @@ export function timeoutMiddleware<TInput = any, TOutput = any>(
   const { duration, message } = options;
 
   return (next) => async (input) => {
-    return await timeout<TOutput>({
+    const result = await timeout<TOutput>({
       execute: async () => await next(input),
       timeoutMs: duration,
-      errorMessage: message,
+      message: message,
     });
+    return result.value;
   };
 }
 
@@ -133,7 +134,10 @@ export function rateLimiterMiddleware<TInput = any, TOutput = any>(
 
     return async (input) => {
       const result = await limiter!.execute(input);
-      return result.value;
+      if (!result.allowed) {
+        throw new Error(`Rate limit exceeded. Retry after ${result.retryAfter}ms`);
+      }
+      return result.value!;
     };
   };
 }

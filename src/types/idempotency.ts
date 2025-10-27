@@ -140,7 +140,7 @@ export interface IdempotencyOptions<TResult = any> {
   /**
    * Callback on cache hit
    */
-  onCacheHit?: (key: string, record: IdempotencyRecord<TResult>) => void;
+  onCacheHit?: (key: string) => void;
 
   /**
    * Callback on cache miss

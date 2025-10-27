@@ -4,7 +4,7 @@
 
 import { AsyncFunction, defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
-import { BulkheadOptions, BulkheadResult, BulkheadStats } from "../types/bulkhead";
+import { BulkheadOptions, BulkheadStats } from "../types/bulkhead";
 
 interface QueuedRequest<T> {
   execute: () => Promise<T>;
@@ -102,7 +102,7 @@ class Bulkhead<TResult = any> {
     });
   }
 
-  private async executeNow(queuedAt: number): Promise<TResult> {
+  private async executeNow(_queuedAt: number): Promise<TResult> {
     const { logger = defaultLogger } = this.options;
 
     this.concurrent++;
@@ -115,7 +115,7 @@ class Bulkhead<TResult = any> {
     try {
       logger.info(`Executing (${this.concurrent} concurrent)`);
       const value = await this.fn();
-      const executionTime = Date.now() - executionStart;
+      const _executionTime = Date.now() - executionStart;
       this.completed++;
 
       return value;

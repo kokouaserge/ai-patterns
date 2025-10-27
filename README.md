@@ -1,10 +1,11 @@
 # ai-patterns
 
 [![npm version](https://img.shields.io/npm/v/ai-patterns.svg)](https://www.npmjs.com/package/ai-patterns)
+[![Downloads](https://img.shields.io/npm/dm/ai-patterns.svg)](https://www.npmjs.com/package/ai-patterns)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
-**Production-ready TypeScript patterns to build solid and robust AI applications.**
+**Battle-tested TypeScript patterns for building rock-solid AI applications.**
 
 We provide developers with battle-tested tools for resilient AI workflows: retry logic, circuit breakers, rate limiting, human-in-the-loop escalation, and more — all with complete type safety and composability. Inspired by Vercel AI SDK's developer experience.
 
@@ -31,32 +32,82 @@ pnpm add ai-patterns
 
 ## Quick Start
 
-```typescript
-import { retry, timeout, BackoffStrategy } from 'ai-patterns';
-import { openai } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+### Simple Retry
 
-// Simple retry with timeout protection
+```typescript
+import { retry } from 'ai-patterns';
+
+// Retry any async function
 const result = await retry({
-  execute: async () => {
-    return await timeout({
-      execute: async () => {
-        const { text } = await generateText({
-          model: openai('gpt-4-turbo'),
-          prompt: 'Explain quantum computing',
-          maxRetries: 0
-        });
-        return text;
-      },
-      timeoutMs: 10000
-    });
-  },
-  maxAttempts: 3,
-  backoffStrategy: BackoffStrategy.EXPONENTIAL
+  execute: () => fetch('https://api.example.com/data'),
+  maxAttempts: 3
 });
 
 console.log(result.value);
 ```
+
+### With Vercel AI SDK
+
+```typescript
+import { retry } from 'ai-patterns';
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+const result = await retry({
+  execute: async () => {
+    const { text } = await generateText({
+      model: openai('gpt-4-turbo'),
+      prompt: 'Explain quantum computing'
+    });
+    return text;
+  },
+  maxAttempts: 3
+});
+
+console.log(result.value);
+```
+
+## Why ai-patterns?
+
+Building AI applications? You're probably facing these challenges:
+
+❌ **Copy-pasting retry logic** across every API call
+❌ **No circuit breakers** — one API failure brings down your entire app
+❌ **Constantly hitting rate limits** with no systematic handling
+❌ **No human oversight** for edge cases that need review
+
+**With ai-patterns:**
+
+✅ **Battle-tested patterns** ready to use out of the box
+✅ **Compose like Lego blocks** — combine patterns seamlessly
+✅ **Full type safety** — catch errors at compile time
+✅ **Zero dependencies** — lightweight and production-ready
+
+**Before ai-patterns:**
+```typescript
+// 50+ lines of retry logic with exponential backoff,
+// jitter, error classification, timeout handling...
+let attempt = 0;
+const maxAttempts = 3;
+while (attempt < maxAttempts) {
+  try {
+    // ... complex retry logic
+  } catch (error) {
+    // ... backoff calculation
+    // ... error handling
+  }
+}
+```
+
+**After ai-patterns:**
+```typescript
+const result = await retry({
+  execute: () => callAPI(),
+  maxAttempts: 3
+});
+```
+
+**That's it.** Simple, reliable, production-ready.
 
 ## Advanced Usage
 

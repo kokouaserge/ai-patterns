@@ -153,6 +153,7 @@ export interface IdempotencyOptions<TResult = any> {
  */
 export class InMemoryStore<T = any> implements IdempotencyStore<T> {
   private store = new Map<string, IdempotencyRecord<T>>();
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   async get(key: string): Promise<IdempotencyRecord<T> | null> {
     const record = this.store.get(key);
@@ -183,7 +184,12 @@ export class InMemoryStore<T = any> implements IdempotencyStore<T> {
    * Start automatic cleanup of expired entries
    */
   startCleanup(intervalMs: number = 60000): void {
-    setInterval(() => {
+    // Prevent multiple cleanup timers
+    if (this.cleanupTimer) {
+      return;
+    }
+
+    this.cleanupTimer = setInterval(() => {
       const now = Date.now();
       for (const [key, record] of this.store.entries()) {
         if (now > record.expiresAt) {
@@ -191,6 +197,19 @@ export class InMemoryStore<T = any> implements IdempotencyStore<T> {
         }
       }
     }, intervalMs);
+
+    // Allow Node.js to exit even if timer is running
+    this.cleanupTimer.unref();
+  }
+
+  /**
+   * Stop automatic cleanup
+   */
+  stopCleanup(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
   }
 }
 

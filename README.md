@@ -456,7 +456,7 @@ Inspired by:
 
 ---
 
-**Built with ❤️ by [Serge KOKOUA](https://github.com/sergekokoua)**
+**Built with ❤️ by [Serge KOKOUA](https://github.com/kokouaserge)**
 
 *Empowering developers to build solid and robust AI applications.*
 

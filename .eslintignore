@@ -1,6 +1,0 @@
-dist
-node_modules
-coverage
-*.config.ts
-*.config.js
-vitest.config.ts

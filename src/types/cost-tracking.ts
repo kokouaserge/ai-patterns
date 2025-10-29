@@ -21,7 +21,7 @@ export enum ModelCost {
   // Anthropic Claude models
   CLAUDE_3_5_SONNET = 0.000003, // $3 per 1M tokens (input)
   CLAUDE_3_OPUS = 0.000015, // $15 per 1M tokens (input)
-  CLAUDE_3_SONNET = 0.000003, // $3 per 1M tokens (input)
+  CLAUDE_3_SONNET = 0.000003, // $3 per 1M tokens (input) - same as 3.5 Sonnet
   CLAUDE_3_HAIKU = 0.00000025, // $0.25 per 1M tokens (input)
 
   // Google Gemini models

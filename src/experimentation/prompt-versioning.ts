@@ -288,12 +288,12 @@ export async function versionedPrompt<TResult = any>(
 
   logger.debug(`Selected prompt version: ${selectedVersionName}`);
 
-  const startTime = Date.now();
+  const startTime = performance.now();
 
   try {
     // Execute the prompt
     const result = await execute(selectedVersion.prompt, selectedVersionName);
-    const responseTime = Date.now() - startTime;
+    const responseTime = Math.round(performance.now() - startTime);
 
     // Build execution result
     const executionResult: PromptVersionExecutionResult<TResult> = {

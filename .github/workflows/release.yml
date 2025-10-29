@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Get current version
+        id: current_version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Determine version bump
+        id: version_bump
+        run: |
+          # Check commit messages for version bump type
+          COMMITS=$(git log --pretty=format:"%s" $(git describe --tags --abbrev=0 2>/dev/null || echo "HEAD~10")..HEAD)
+
+          if echo "$COMMITS" | grep -qiE "^(BREAKING CHANGE|feat!|fix!|chore!)"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$COMMITS" | grep -qiE "^feat"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          npm version ${{ steps.version_bump.outputs.type }} --no-git-tag-version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }}"
+          git push
+
+      - name: Create and push tag
+        run: |
+          git tag -a "v${{ steps.bump_version.outputs.new_version }}" -m "Release v${{ steps.bump_version.outputs.new_version }}"
+          git push origin "v${{ steps.bump_version.outputs.new_version }}"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD~10..HEAD)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.bump_version.outputs.new_version }}
+          release_name: Release v${{ steps.bump_version.outputs.new_version }}
+          body: |
+            ## Changes in v${{ steps.bump_version.outputs.new_version }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.current_version.outputs.version }}...v${{ steps.bump_version.outputs.new_version }}
+          draft: false
+          prerelease: false

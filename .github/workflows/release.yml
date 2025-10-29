@@ -1,7 +1,9 @@
 name: Release
 
 on:
-  push:
+  pull_request:
+    types:
+      - closed
     branches:
       - main
 
@@ -9,6 +11,7 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     permissions:
       contents: write
 

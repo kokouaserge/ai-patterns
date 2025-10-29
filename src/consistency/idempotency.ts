@@ -254,7 +254,18 @@ export class Idempotency<TResult = any, TArgs extends any[] = any[]> {
  * Global shared store for idempotent function calls
  */
 const globalIdempotencyStore = new InMemoryStore<any>();
-globalIdempotencyStore.startCleanup();
+
+/**
+ * Lazy-initialize cleanup for the global store
+ * This is called only when the store is actually used
+ */
+let cleanupInitialized = false;
+function ensureCleanupInitialized() {
+  if (!cleanupInitialized) {
+    globalIdempotencyStore.startCleanup();
+    cleanupInitialized = true;
+  }
+}
 
 /**
  * Global pending requests map to handle concurrent requests
@@ -265,13 +276,28 @@ const globalPendingRequests = new Map<string, Promise<any>>();
  * Reset the global idempotency store (useful for testing)
  */
 export function resetGlobalIdempotencyStore(): void {
-  // Clear all entries by creating a new store
-  const newStore = new InMemoryStore<any>();
-  newStore.startCleanup();
-  // Copy the new store's internal state to the global store
-  // Since InMemoryStore doesn't expose a clear method, we need to manually clear
+  // Stop any running cleanup
+  globalIdempotencyStore.stopCleanup();
+  // Clear all entries
   (globalIdempotencyStore as any).store = new Map();
   globalPendingRequests.clear();
+  // Reset cleanup initialization flag
+  cleanupInitialized = false;
+}
+
+/**
+ * Stop the global idempotency store cleanup (useful for testing or when shutting down)
+ */
+export function stopGlobalIdempotencyCleanup(): void {
+  globalIdempotencyStore.stopCleanup();
+  cleanupInitialized = false;
+}
+
+/**
+ * Manually start the global idempotency store cleanup
+ */
+export function startGlobalIdempotencyCleanup(): void {
+  ensureCleanupInitialized();
 }
 
 /**
@@ -306,6 +332,11 @@ export async function idempotent<TResult = any>(
 
   const idempotencyStore = store ?? (globalIdempotencyStore as IdempotencyStore<TResult>);
   const cacheTtl = ttl ?? 3600000;
+
+  // Initialize cleanup for global store on first use
+  if (!store) {
+    ensureCleanupInitialized();
+  }
 
   logger.debug(`Idempotency key: ${idempotencyKey}`);
 

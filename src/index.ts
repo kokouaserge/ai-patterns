@@ -53,7 +53,14 @@ export { ContextStrategy } from "./types/context-window";
 // ===== Consistency Patterns =====
 
 // Idempotency Pattern
-export { Idempotency, idempotent, Idempotent } from "./consistency/idempotency";
+export {
+  Idempotency,
+  idempotent,
+  Idempotent,
+  resetGlobalIdempotencyStore,
+  stopGlobalIdempotencyCleanup,
+  startGlobalIdempotencyCleanup
+} from "./consistency/idempotency";
 
 // ===== New Resilience Patterns =====
 

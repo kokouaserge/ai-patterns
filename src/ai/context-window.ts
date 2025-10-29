@@ -139,7 +139,7 @@ async function optimizeMessages(
 
   // Use user-provided strategy override for built-in strategies
   if (strategy !== ContextStrategy.CUSTOM && strategies[strategy]) {
-    const result = strategies[strategy]!(messages);
+    const result = strategies[strategy](messages);
     return result instanceof Promise ? await result : result;
   }
 

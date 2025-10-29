@@ -11,7 +11,7 @@ We provide developers with battle-tested tools for resilient AI workflows: retry
 
 ## Features
 
-✨ **20 Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, A/B Testing, Cost Tracking, Prompt Versioning, Response Validation, Context Window Management, and more
+✨ **Battle-Tested Patterns** - Retry, Circuit Breaker, Timeout, Rate Limiter, Fallback, Cache, Debounce, Throttle, Bulkhead, A/B Testing, Cost Tracking, Prompt Versioning, Response Validation, Context Window Management, Reflection Loop, and more
 🎨 **Elegant Composition** - Compose patterns together for complex workflows
 🔒 **Type-Safe** - Full TypeScript support with generics and strict mode
 🧩 **Composable** - Patterns work together seamlessly for robust workflows
@@ -202,6 +202,7 @@ const result = await robustAI(callAI, "Explain quantum computing");
 |---------|-------------|----------|------|
 | **[humanInTheLoop](#human-in-the-loop)** | AI → Human escalation | Content moderation | [📖](./docs/patterns/human-in-the-loop.md) |
 | **[smartContextWindow](#context-window)** | Manage context token limits automatically | Long conversations, chat apps | [📖](./docs/patterns/context-window.md) |
+| **[reflectionLoop](#reflection-loop)** | AI self-critique and iterative improvement | High-quality content generation | [📖](./docs/patterns/reflection-loop.md) |
 | **[idempotency](#idempotency)** | Prevent duplicate operations | Payment processing | [📖](./docs/patterns/idempotency.md) |
 
 ### Experimentation & Monitoring
@@ -320,6 +321,7 @@ const result = await robustAI(
 - [Saga →](./docs/patterns/saga.md)
 - [Human-in-the-Loop →](./docs/patterns/human-in-the-loop.md)
 - [Smart Context Window →](./docs/patterns/context-window.md)
+- [Reflection Loop →](./docs/patterns/reflection-loop.md)
 - [Idempotency →](./docs/patterns/idempotency.md)
 - [A/B Testing →](./docs/patterns/ab-test.md)
 - [Cost Tracking →](./docs/patterns/cost-tracking.md)
@@ -343,6 +345,7 @@ Each pattern has a simple runnable example:
 - [fan-out-simple.ts](./examples/basic/fan-out-simple.ts)
 - [saga-simple.ts](./examples/basic/saga-simple.ts)
 - [human-in-loop-simple.ts](./examples/basic/human-in-loop-simple.ts)
+- [reflection-loop-simple.ts](./examples/basic/reflection-loop-simple.ts)
 - [idempotency-simple.ts](./examples/basic/idempotency-simple.ts)
 - [ab-test-simple.ts](./examples/basic/ab-test-simple.ts)
 - [cost-tracking-simple.ts](./examples/basic/cost-tracking-simple.ts)
@@ -379,6 +382,7 @@ Coming soon:
 - [Saga Pattern](./docs/patterns/saga.md)
 - [Human-in-the-Loop Pattern](./docs/patterns/human-in-the-loop.md)
 - [Smart Context Window Pattern](./docs/patterns/context-window.md)
+- [Reflection Loop Pattern](./docs/patterns/reflection-loop.md)
 - [Idempotency Pattern](./docs/patterns/idempotency.md)
 - [A/B Testing Pattern](./docs/patterns/ab-test.md)
 - [Cost Tracking Pattern](./docs/patterns/cost-tracking.md)

@@ -155,6 +155,7 @@ export class InMemoryStore<T = any> implements IdempotencyStore<T> {
   private store = new Map<string, IdempotencyRecord<T>>();
   private cleanupTimer: NodeJS.Timeout | null = null;
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async get(key: string): Promise<IdempotencyRecord<T> | null> {
     const record = this.store.get(key);
     if (!record) return null;
@@ -168,14 +169,17 @@ export class InMemoryStore<T = any> implements IdempotencyStore<T> {
     return record;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async set(key: string, record: IdempotencyRecord<T>): Promise<void> {
     this.store.set(key, record);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async delete(key: string): Promise<void> {
     this.store.delete(key);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async clear(): Promise<void> {
     this.store.clear();
   }

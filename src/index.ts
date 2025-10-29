@@ -50,6 +50,9 @@ export { HumanInTheLoop, humanInTheLoop, CommonEscalationRules } from "./ai/huma
 export { smartContextWindow, createAISummarizer } from "./ai/context-window";
 export { ContextStrategy } from "./types/context-window";
 
+// Reflection Loop Pattern
+export { reflectionLoop, InMemoryReflectionStorage } from "./ai/reflection-loop";
+
 // ===== Consistency Patterns =====
 
 // Idempotency Pattern

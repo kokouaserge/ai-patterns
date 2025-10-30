@@ -3,6 +3,7 @@
  */
 
 import { AsyncFunction, Logger } from "./common";
+import { InMemoryStorage } from "../common/storage";
 
 /**
  * Idempotency record status
@@ -83,9 +84,9 @@ export interface IdempotencyRecord<T = any> {
  * Interface for custom idempotency store
  */
 export interface IdempotencyStore<T = any> {
-  get(key: string): Promise<IdempotencyRecord<T> | null>;
+  getRecord(key: string): Promise<IdempotencyRecord<T> | null>;
   set(key: string, record: IdempotencyRecord<T>): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<boolean>;
   clear(): Promise<void>;
 }
 
@@ -151,69 +152,58 @@ export interface IdempotencyOptions<TResult = any> {
 /**
  * In-memory store implementation
  */
-export class InMemoryStore<T = any> implements IdempotencyStore<T> {
-  private store = new Map<string, IdempotencyRecord<T>>();
-  private cleanupTimer: NodeJS.Timeout | null = null;
+export class InMemoryStore<T = any>
+  extends InMemoryStorage<string, IdempotencyRecord<T>>
+  implements IdempotencyStore<T>
+{
+  constructor() {
+    super({ autoCleanup: false });
+  }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async get(key: string): Promise<IdempotencyRecord<T> | null> {
-    const record = this.store.get(key);
-    if (!record) return null;
+  override async get(key: string): Promise<IdempotencyRecord<T> | undefined> {
+    const entry = this.getRawEntry(key);
+    if (!entry) return undefined;
 
-    // Check expiration
+    const record = entry.value;
+    // Check expiration using the record's own expiresAt
     if (Date.now() > record.expiresAt) {
-      this.store.delete(key);
-      return null;
+      await super.delete(key);
+      return undefined;
     }
 
     return record;
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
+  async getRecord(key: string): Promise<IdempotencyRecord<T> | null> {
+    const result = await this.get(key);
+    return result ?? null;
+  }
+
   async set(key: string, record: IdempotencyRecord<T>): Promise<void> {
-    this.store.set(key, record);
+    // Store record without additional TTL wrapper since record has its own expiresAt
+    await super.set(key, record);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async delete(key: string): Promise<void> {
-    this.store.delete(key);
+  async delete(key: string): Promise<boolean> {
+    return super.delete(key);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async clear(): Promise<void> {
-    this.store.clear();
+    return super.clear();
   }
 
   /**
    * Start automatic cleanup of expired entries
    */
   startCleanup(intervalMs: number = 60000): void {
-    // Prevent multiple cleanup timers
-    if (this.cleanupTimer) {
-      return;
-    }
-
-    this.cleanupTimer = setInterval(() => {
-      const now = Date.now();
-      for (const [key, record] of this.store.entries()) {
-        if (now > record.expiresAt) {
-          this.store.delete(key);
-        }
-      }
-    }, intervalMs);
-
-    // Allow Node.js to exit even if timer is running
-    this.cleanupTimer.unref();
+    super.startCleanup(intervalMs);
   }
 
   /**
    * Stop automatic cleanup
    */
   stopCleanup(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
+    super.stopCleanup();
   }
 }
 

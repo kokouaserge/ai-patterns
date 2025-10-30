@@ -7,6 +7,14 @@
 // ===== All Types =====
 export * from "./types";
 
+// ===== Common Utilities =====
+export {
+  InMemoryStorage,
+  InMemoryKeyValueStorage,
+  type InMemoryStorageOptions,
+  type StorageEntry
+} from "./common/storage";
+
 // ===== Resilience Patterns =====
 
 // Retry Pattern

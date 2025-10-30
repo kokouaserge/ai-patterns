@@ -45,21 +45,38 @@ import type {
 } from "../types/prompt-versioning";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { InMemoryStorage } from "../common/storage";
 
 /**
  * Simple in-memory storage for prompt version metrics
  */
-export class InMemoryPromptVersionStorage implements PromptVersionStorage {
-  private metrics = new Map<string, PromptVersionMetrics>();
-  private activeVersions = new Map<string, string>();
-  private history = new Map<string, string[]>();
+export class InMemoryPromptVersionStorage
+  extends InMemoryStorage<string, PromptVersionMetrics | string | string[]>
+  implements PromptVersionStorage
+{
+  constructor() {
+    super({ autoCleanup: false });
+  }
+
+  private getMetricsKey(promptId: string, version: string): string {
+    return `metrics:${promptId}:${version}`;
+  }
+
+  private getActiveVersionKey(promptId: string): string {
+    return `active:${promptId}`;
+  }
+
+  private getHistoryKey(promptId: string): string {
+    return `history:${promptId}`;
+  }
 
   async getMetrics(
     promptId: string,
     version: string
   ): Promise<PromptVersionMetrics | null> {
-    const key = `${promptId}:${version}`;
-    return this.metrics.get(key) ?? null;
+    const key = this.getMetricsKey(promptId, version);
+    const value = await this.get(key);
+    return (value as PromptVersionMetrics) ?? null;
   }
 
   async updateMetrics(
@@ -67,29 +84,37 @@ export class InMemoryPromptVersionStorage implements PromptVersionStorage {
     version: string,
     metrics: Partial<PromptVersionMetrics>
   ): Promise<void> {
-    const key = `${promptId}:${version}`;
-    const existing = this.metrics.get(key) || {};
-    this.metrics.set(key, { ...existing, ...metrics });
+    const key = this.getMetricsKey(promptId, version);
+    const existing = (await this.get(key)) as PromptVersionMetrics | undefined;
+    const baseMetrics = existing || ({} as PromptVersionMetrics);
+    await this.set(key, { ...baseMetrics, ...metrics } as PromptVersionMetrics);
   }
 
   async getActiveVersion(promptId: string): Promise<string | null> {
-    return this.activeVersions.get(promptId) ?? null;
+    const key = this.getActiveVersionKey(promptId);
+    const value = await this.get(key);
+    return (value as string) ?? null;
   }
 
   async setActiveVersion(promptId: string, version: string): Promise<void> {
-    const previous = this.activeVersions.get(promptId);
-    this.activeVersions.set(promptId, version);
+    const activeKey = this.getActiveVersionKey(promptId);
+    const historyKey = this.getHistoryKey(promptId);
+
+    const previous = await this.get(activeKey);
+    await this.set(activeKey, version);
 
     // Update history
-    const versions = this.history.get(promptId) || [];
+    const versions = ((await this.get(historyKey)) as string[]) || [];
     if (previous && previous !== version) {
-      versions.push(previous);
+      versions.push(previous as string);
     }
-    this.history.set(promptId, versions);
+    await this.set(historyKey, versions);
   }
 
   async getVersionHistory(promptId: string): Promise<string[]> {
-    return this.history.get(promptId) || [];
+    const key = this.getHistoryKey(promptId);
+    const value = await this.get(key);
+    return (value as string[]) || [];
   }
 }
 

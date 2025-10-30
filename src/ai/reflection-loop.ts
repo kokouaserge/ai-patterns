@@ -43,6 +43,7 @@ import type {
 } from "../types/reflection-loop";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { InMemoryStorage } from "../common/storage";
 
 /**
  * In-memory storage implementation for reflection history
@@ -50,24 +51,28 @@ import { PatternError, ErrorCode } from "../types/errors";
 export class InMemoryReflectionStorage<TResponse>
   implements ReflectionHistoryStorage<TResponse>
 {
-  private storage = new Map<string, ReflectionIteration<TResponse>[]>();
+  private storage = new InMemoryStorage<string, ReflectionIteration<TResponse>[]>({
+    autoCleanup: false
+  });
 
-  save(sessionId: string, iteration: ReflectionIteration<TResponse>): void {
-    const existing = this.storage.get(sessionId) || [];
-    existing.push(iteration);
-    this.storage.set(sessionId, existing);
+  async save(sessionId: string, iteration: ReflectionIteration<TResponse>): Promise<void> {
+    const existing = await this.storage.get(sessionId);
+    const iterations = existing || [];
+    iterations.push(iteration);
+    await this.storage.set(sessionId, iterations);
   }
 
-  load(sessionId: string): ReflectionIteration<TResponse>[] {
-    return this.storage.get(sessionId) || [];
+  async load(sessionId: string): Promise<ReflectionIteration<TResponse>[]> {
+    const iterations = await this.storage.get(sessionId);
+    return iterations || [];
   }
 
-  delete(sessionId: string): void {
-    this.storage.delete(sessionId);
+  async delete(sessionId: string): Promise<void> {
+    await this.storage.delete(sessionId);
   }
 
-  listSessions(): string[] {
-    return Array.from(this.storage.keys());
+  async listSessions(): Promise<string[]> {
+    return this.storage.keys();
   }
 }
 

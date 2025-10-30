@@ -33,32 +33,54 @@ import type {
 } from "../types/cost-tracking";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { InMemoryStorage } from "../common/storage";
 
 /**
  * In-memory cost storage implementation
  */
-class InMemoryCostStorage implements CostStorage {
-  private tracking: Record<string, SpentTracking> = {
-    monthly: { spent: 0, periodStart: Date.now(), periodDuration: 30 * 24 * 60 * 60 * 1000 },
-    daily: { spent: 0, periodStart: Date.now(), periodDuration: 24 * 60 * 60 * 1000 },
-    hourly: { spent: 0, periodStart: Date.now(), periodDuration: 60 * 60 * 1000 },
-  };
+class InMemoryCostStorage
+  extends InMemoryStorage<string, SpentTracking>
+  implements CostStorage
+{
+  constructor() {
+    super({ autoCleanup: false });
+    // Initialize default periods
+    this.initializePeriods();
+  }
+
+  private initializePeriods(): void {
+    const now = Date.now();
+    this.store.set("monthly", {
+      value: { spent: 0, periodStart: now, periodDuration: 30 * 24 * 60 * 60 * 1000 },
+    });
+    this.store.set("daily", {
+      value: { spent: 0, periodStart: now, periodDuration: 24 * 60 * 60 * 1000 },
+    });
+    this.store.set("hourly", {
+      value: { spent: 0, periodStart: now, periodDuration: 60 * 60 * 1000 },
+    });
+  }
 
   async getSpent(period: "monthly" | "daily" | "hourly"): Promise<number> {
-    const track = this.tracking[period];
+    const track = await this.get(period);
+    if (!track) return 0;
+
     const now = Date.now();
 
     // Reset if period has elapsed
     if (now - track.periodStart > track.periodDuration) {
       track.spent = 0;
       track.periodStart = now;
+      await this.set(period, track);
     }
 
     return track.spent;
   }
 
   async addSpent(period: "monthly" | "daily" | "hourly", amount: number): Promise<void> {
-    const track = this.tracking[period];
+    const track = await this.get(period);
+    if (!track) return;
+
     const now = Date.now();
 
     // Reset if period has elapsed
@@ -68,12 +90,16 @@ class InMemoryCostStorage implements CostStorage {
     }
 
     track.spent += amount;
+    await this.set(period, track);
   }
 
   async resetSpent(period: "monthly" | "daily" | "hourly"): Promise<void> {
-    const track = this.tracking[period];
+    const track = await this.get(period);
+    if (!track) return;
+
     track.spent = 0;
     track.periodStart = Date.now();
+    await this.set(period, track);
   }
 }
 

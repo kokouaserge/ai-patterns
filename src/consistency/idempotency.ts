@@ -70,7 +70,7 @@ export class Idempotency<TResult = any, TArgs extends any[] = any[]> {
     this.logger.debug(`Idempotency key: ${key}`);
 
     // Check for cached result
-    const cachedRecord = await this.store.get(key);
+    const cachedRecord = await this.store.getRecord(key);
 
     if (cachedRecord) {
       if (cachedRecord.status === IdempotencyStatus.COMPLETED) {
@@ -145,7 +145,7 @@ export class Idempotency<TResult = any, TArgs extends any[] = any[]> {
     }
 
     // If we get here, retry
-    const cachedRecord = await this.store.get(key);
+    const cachedRecord = await this.store.getRecord(key);
     if (cachedRecord && cachedRecord.status === IdempotencyStatus.COMPLETED) {
       return cachedRecord.result;
     }
@@ -246,7 +246,7 @@ export class Idempotency<TResult = any, TArgs extends any[] = any[]> {
    */
   async getRecord(...args: TArgs): Promise<IdempotencyRecord<TResult> | null> {
     const key = this.keyGenerator(...args);
-    return this.store.get(key);
+    return this.store.getRecord(key);
   }
 }
 
@@ -341,7 +341,7 @@ export async function idempotent<TResult = any>(
   logger.debug(`Idempotency key: ${idempotencyKey}`);
 
   // Check for cached result
-  const cachedRecord = await idempotencyStore.get(idempotencyKey);
+  const cachedRecord = await idempotencyStore.getRecord(idempotencyKey);
 
   if (cachedRecord) {
     if (cachedRecord.status === IdempotencyStatus.COMPLETED) {

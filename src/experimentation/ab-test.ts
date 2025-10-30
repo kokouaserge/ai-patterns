@@ -37,21 +37,23 @@ import type {
 import { VariantAssignmentStrategy } from "../types/ab-test";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { InMemoryStorage } from "../common/storage";
 
 /**
  * Simple in-memory storage for sticky assignments
  */
 class InMemoryAssignmentStorage {
-  private store = new Map<string, string>();
+  private storage = new InMemoryStorage<string, string>({ autoCleanup: false });
 
   async get(userId: string, experimentId: string): Promise<string | null> {
     const key = `${experimentId}:${userId}`;
-    return this.store.get(key) ?? null;
+    const value = await this.storage.get(key);
+    return value ?? null;
   }
 
   async set(userId: string, experimentId: string, variantName: string): Promise<void> {
     const key = `${experimentId}:${userId}`;
-    this.store.set(key, variantName);
+    await this.storage.set(key, variantName);
   }
 }
 

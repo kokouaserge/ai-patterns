@@ -45,17 +45,17 @@ import type {
 } from "../types/prompt-versioning";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
-import { InMemoryStorage } from "../common/storage";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * Simple in-memory storage for prompt version metrics
+ * Simple in-memory storage for prompt version metrics using GlobalStorage
  */
-export class InMemoryPromptVersionStorage
-  extends InMemoryStorage<string, PromptVersionMetrics | string | string[]>
-  implements PromptVersionStorage
-{
+export class InMemoryPromptVersionStorage implements PromptVersionStorage {
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.PROMPT_VERSION;
+
   constructor() {
-    super({ autoCleanup: false });
+    this.storage = GlobalStorage.getInstance();
   }
 
   private getMetricsKey(promptId: string, version: string): string {
@@ -75,8 +75,8 @@ export class InMemoryPromptVersionStorage
     version: string
   ): Promise<PromptVersionMetrics | null> {
     const key = this.getMetricsKey(promptId, version);
-    const value = await this.get(key);
-    return (value as PromptVersionMetrics) ?? null;
+    const value = await this.storage.get<PromptVersionMetrics>(this.namespace, key);
+    return value ?? null;
   }
 
   async updateMetrics(
@@ -85,36 +85,36 @@ export class InMemoryPromptVersionStorage
     metrics: Partial<PromptVersionMetrics>
   ): Promise<void> {
     const key = this.getMetricsKey(promptId, version);
-    const existing = (await this.get(key)) as PromptVersionMetrics | undefined;
+    const existing = await this.storage.get<PromptVersionMetrics>(this.namespace, key);
     const baseMetrics = existing || ({} as PromptVersionMetrics);
-    await this.set(key, { ...baseMetrics, ...metrics } as PromptVersionMetrics);
+    await this.storage.set(this.namespace, key, { ...baseMetrics, ...metrics } as PromptVersionMetrics);
   }
 
   async getActiveVersion(promptId: string): Promise<string | null> {
     const key = this.getActiveVersionKey(promptId);
-    const value = await this.get(key);
-    return (value as string) ?? null;
+    const value = await this.storage.get<string>(this.namespace, key);
+    return value ?? null;
   }
 
   async setActiveVersion(promptId: string, version: string): Promise<void> {
     const activeKey = this.getActiveVersionKey(promptId);
     const historyKey = this.getHistoryKey(promptId);
 
-    const previous = await this.get(activeKey);
-    await this.set(activeKey, version);
+    const previous = await this.storage.get<string>(this.namespace, activeKey);
+    await this.storage.set(this.namespace, activeKey, version);
 
     // Update history
-    const versions = ((await this.get(historyKey)) as string[]) || [];
+    const versions = await this.storage.get<string[]>(this.namespace, historyKey) || [];
     if (previous && previous !== version) {
-      versions.push(previous as string);
+      versions.push(previous);
     }
-    await this.set(historyKey, versions);
+    await this.storage.set(this.namespace, historyKey, versions);
   }
 
   async getVersionHistory(promptId: string): Promise<string[]> {
     const key = this.getHistoryKey(promptId);
-    const value = await this.get(key);
-    return (value as string[]) || [];
+    const value = await this.storage.get<string[]>(this.namespace, key);
+    return value || [];
   }
 }
 

@@ -37,23 +37,28 @@ import type {
 import { VariantAssignmentStrategy } from "../types/ab-test";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
-import { InMemoryStorage } from "../common/storage";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * Simple in-memory storage for sticky assignments
+ * Simple in-memory storage for sticky assignments using GlobalStorage
  */
 class InMemoryAssignmentStorage {
-  private storage = new InMemoryStorage<string, string>({ autoCleanup: false });
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.AB_TEST;
+
+  constructor() {
+    this.storage = GlobalStorage.getInstance();
+  }
 
   async get(userId: string, experimentId: string): Promise<string | null> {
     const key = `${experimentId}:${userId}`;
-    const value = await this.storage.get(key);
+    const value = await this.storage.get<string>(this.namespace, key);
     return value ?? null;
   }
 
   async set(userId: string, experimentId: string, variantName: string): Promise<void> {
     const key = `${experimentId}:${userId}`;
-    await this.storage.set(key, variantName);
+    await this.storage.set(this.namespace, key, variantName);
   }
 }
 

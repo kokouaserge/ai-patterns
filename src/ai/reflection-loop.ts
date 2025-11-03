@@ -43,36 +43,39 @@ import type {
 } from "../types/reflection-loop";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
-import { InMemoryStorage } from "../common/storage";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * In-memory storage implementation for reflection history
+ * In-memory storage implementation for reflection history using GlobalStorage
  */
 export class InMemoryReflectionStorage<TResponse>
   implements ReflectionHistoryStorage<TResponse>
 {
-  private storage = new InMemoryStorage<string, ReflectionIteration<TResponse>[]>({
-    autoCleanup: false
-  });
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.REFLECTION;
+
+  constructor() {
+    this.storage = GlobalStorage.getInstance();
+  }
 
   async save(sessionId: string, iteration: ReflectionIteration<TResponse>): Promise<void> {
-    const existing = await this.storage.get(sessionId);
+    const existing = await this.storage.get<ReflectionIteration<TResponse>[]>(this.namespace, sessionId);
     const iterations = existing || [];
     iterations.push(iteration);
-    await this.storage.set(sessionId, iterations);
+    await this.storage.set(this.namespace, sessionId, iterations);
   }
 
   async load(sessionId: string): Promise<ReflectionIteration<TResponse>[]> {
-    const iterations = await this.storage.get(sessionId);
+    const iterations = await this.storage.get<ReflectionIteration<TResponse>[]>(this.namespace, sessionId);
     return iterations || [];
   }
 
   async delete(sessionId: string): Promise<void> {
-    await this.storage.delete(sessionId);
+    await this.storage.delete(this.namespace, sessionId);
   }
 
   async listSessions(): Promise<string[]> {
-    return this.storage.keys();
+    return this.storage.keys(this.namespace);
   }
 }
 

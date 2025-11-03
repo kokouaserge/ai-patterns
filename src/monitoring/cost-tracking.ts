@@ -33,36 +33,48 @@ import type {
 } from "../types/cost-tracking";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
-import { InMemoryStorage } from "../common/storage";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * In-memory cost storage implementation
+ * In-memory cost storage implementation using GlobalStorage
  */
-class InMemoryCostStorage
-  extends InMemoryStorage<string, SpentTracking>
-  implements CostStorage
-{
+class InMemoryCostStorage implements CostStorage {
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.COST_TRACKING;
+  private initialized = false;
+
   constructor() {
-    super({ autoCleanup: false });
-    // Initialize default periods
-    this.initializePeriods();
+    this.storage = GlobalStorage.getInstance();
   }
 
-  private initializePeriods(): void {
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+
     const now = Date.now();
-    this.store.set("monthly", {
-      value: { spent: 0, periodStart: now, periodDuration: 30 * 24 * 60 * 60 * 1000 },
-    });
-    this.store.set("daily", {
-      value: { spent: 0, periodStart: now, periodDuration: 24 * 60 * 60 * 1000 },
-    });
-    this.store.set("hourly", {
-      value: { spent: 0, periodStart: now, periodDuration: 60 * 60 * 1000 },
-    });
+    const periods: Array<"monthly" | "daily" | "hourly"> = ["monthly", "daily", "hourly"];
+    const durations = {
+      monthly: 30 * 24 * 60 * 60 * 1000,
+      daily: 24 * 60 * 60 * 1000,
+      hourly: 60 * 60 * 1000,
+    };
+
+    for (const period of periods) {
+      const existing = await this.storage.get<SpentTracking>(this.namespace, period);
+      if (!existing) {
+        await this.storage.set(this.namespace, period, {
+          spent: 0,
+          periodStart: now,
+          periodDuration: durations[period],
+        });
+      }
+    }
+
+    this.initialized = true;
   }
 
   async getSpent(period: "monthly" | "daily" | "hourly"): Promise<number> {
-    const track = await this.get(period);
+    await this.ensureInitialized();
+    const track = await this.storage.get<SpentTracking>(this.namespace, period);
     if (!track) return 0;
 
     const now = Date.now();
@@ -71,14 +83,15 @@ class InMemoryCostStorage
     if (now - track.periodStart > track.periodDuration) {
       track.spent = 0;
       track.periodStart = now;
-      await this.set(period, track);
+      await this.storage.set(this.namespace, period, track);
     }
 
     return track.spent;
   }
 
   async addSpent(period: "monthly" | "daily" | "hourly", amount: number): Promise<void> {
-    const track = await this.get(period);
+    await this.ensureInitialized();
+    const track = await this.storage.get<SpentTracking>(this.namespace, period);
     if (!track) return;
 
     const now = Date.now();
@@ -90,16 +103,17 @@ class InMemoryCostStorage
     }
 
     track.spent += amount;
-    await this.set(period, track);
+    await this.storage.set(this.namespace, period, track);
   }
 
   async resetSpent(period: "monthly" | "daily" | "hourly"): Promise<void> {
-    const track = await this.get(period);
+    await this.ensureInitialized();
+    const track = await this.storage.get<SpentTracking>(this.namespace, period);
     if (!track) return;
 
     track.spent = 0;
     track.periodStart = Date.now();
-    await this.set(period, track);
+    await this.storage.set(this.namespace, period, track);
   }
 }
 

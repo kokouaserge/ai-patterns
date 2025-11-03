@@ -3,7 +3,7 @@
  */
 
 import { AsyncFunction, Logger } from "./common";
-import { InMemoryStorage } from "../common/storage";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
  * Idempotency record status
@@ -150,60 +150,56 @@ export interface IdempotencyOptions<TResult = any> {
 }
 
 /**
- * In-memory store implementation
+ * In-memory store implementation using GlobalStorage
  */
-export class InMemoryStore<T = any>
-  extends InMemoryStorage<string, IdempotencyRecord<T>>
-  implements IdempotencyStore<T>
-{
+export class InMemoryStore<T = any> implements IdempotencyStore<T> {
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.IDEMPOTENCY;
+
   constructor() {
-    super({ autoCleanup: false });
+    this.storage = GlobalStorage.getInstance();
   }
 
-  override async get(key: string): Promise<IdempotencyRecord<T> | undefined> {
-    const entry = this.getRawEntry(key);
-    if (!entry) return undefined;
+  async getRecord(key: string): Promise<IdempotencyRecord<T> | null> {
+    const record = await this.storage.get<IdempotencyRecord<T>>(this.namespace, key);
+    if (!record) return null;
 
-    const record = entry.value;
     // Check expiration using the record's own expiresAt
     if (Date.now() > record.expiresAt) {
-      await super.delete(key);
-      return undefined;
+      await this.storage.delete(this.namespace, key);
+      return null;
     }
 
     return record;
   }
 
-  async getRecord(key: string): Promise<IdempotencyRecord<T> | null> {
-    const result = await this.get(key);
-    return result ?? null;
-  }
-
   async set(key: string, record: IdempotencyRecord<T>): Promise<void> {
     // Store record without additional TTL wrapper since record has its own expiresAt
-    await super.set(key, record);
+    await this.storage.set(this.namespace, key, record);
   }
 
   async delete(key: string): Promise<boolean> {
-    return super.delete(key);
+    return this.storage.delete(this.namespace, key);
   }
 
   async clear(): Promise<void> {
-    return super.clear();
+    await this.storage.clear(this.namespace);
   }
 
   /**
    * Start automatic cleanup of expired entries
    */
-  startCleanup(intervalMs: number = 60000): void {
-    super.startCleanup(intervalMs);
+  startCleanup(_intervalMs?: number): void {
+    // Cleanup is handled globally by GlobalStorage
+    // This method is kept for backward compatibility
   }
 
   /**
    * Stop automatic cleanup
    */
   stopCleanup(): void {
-    super.stopCleanup();
+    // Cleanup is handled globally by GlobalStorage
+    // This method is kept for backward compatibility
   }
 }
 

@@ -9,10 +9,13 @@ export * from "./types";
 
 // ===== Common Utilities =====
 export {
+  GlobalStorage,
+  StorageNamespace,
+  type GlobalStorageOptions,
+  type StorageEntry,
+  // Legacy exports for backward compatibility
   InMemoryStorage,
   InMemoryKeyValueStorage,
-  type InMemoryStorageOptions,
-  type StorageEntry
 } from "./common/storage";
 
 // ===== Resilience Patterns =====

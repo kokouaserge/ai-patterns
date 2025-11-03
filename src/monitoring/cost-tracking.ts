@@ -118,9 +118,16 @@ class InMemoryCostStorage implements CostStorage {
 }
 
 /**
- * Default storage instance
+ * Default storage instance (lazy initialization)
  */
-const defaultStorage = new InMemoryCostStorage();
+let defaultStorage: InMemoryCostStorage | null = null;
+
+function getDefaultStorage(): InMemoryCostStorage {
+  if (!defaultStorage) {
+    defaultStorage = new InMemoryCostStorage();
+  }
+  return defaultStorage;
+}
 
 /**
  * Check if budget would be exceeded
@@ -285,7 +292,7 @@ export async function costTracking<TResult = any>(
     onCostCalculated,
     onExpensiveOperation,
     logger = defaultLogger,
-    storage = defaultStorage,
+    storage = getDefaultStorage(),
   } = config;
 
   const timestamp = Date.now();

@@ -63,9 +63,16 @@ class InMemoryAssignmentStorage {
 }
 
 /**
- * Default in-memory storage instance
+ * Default in-memory storage instance (lazy initialization)
  */
-const defaultStorage = new InMemoryAssignmentStorage();
+let defaultStorage: InMemoryAssignmentStorage | null = null;
+
+function getDefaultStorage(): InMemoryAssignmentStorage {
+  if (!defaultStorage) {
+    defaultStorage = new InMemoryAssignmentStorage();
+  }
+  return defaultStorage;
+}
 
 /**
  * Hash function for consistent variant assignment
@@ -131,7 +138,7 @@ export async function abTest<TResult = any>(
     userId,
     experimentId = "default",
     strategy = VariantAssignmentStrategy.WEIGHTED,
-    storage = defaultStorage,
+    storage = getDefaultStorage(),
     onVariantSelected,
     onSuccess,
     onError,

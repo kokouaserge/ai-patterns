@@ -119,9 +119,16 @@ export class InMemoryPromptVersionStorage implements PromptVersionStorage {
 }
 
 /**
- * Default storage instance
+ * Default storage instance (lazy initialization)
  */
-const defaultStorage = new InMemoryPromptVersionStorage();
+let defaultStorage: InMemoryPromptVersionStorage | null = null;
+
+function getDefaultStorage(): InMemoryPromptVersionStorage {
+  if (!defaultStorage) {
+    defaultStorage = new InMemoryPromptVersionStorage();
+  }
+  return defaultStorage;
+}
 
 /**
  * Select a version based on rollout percentages
@@ -296,7 +303,7 @@ export async function versionedPrompt<TResult = any>(
     onSuccess,
     onError,
     logger = defaultLogger,
-    storage = defaultStorage,
+    storage = getDefaultStorage(),
   } = config;
 
   // Validate versions

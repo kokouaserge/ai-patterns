@@ -362,7 +362,7 @@ describe("reflectionLoop", () => {
         sessionId,
       });
 
-      const loaded = storage.load(sessionId);
+      const loaded = await storage.load(sessionId);
       expect(loaded).toHaveLength(1);
       expect(loaded[0].response).toBe("Response");
     });

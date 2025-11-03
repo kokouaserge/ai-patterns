@@ -3,8 +3,12 @@ import { abTest, InMemoryAssignmentStorage } from "./ab-test";
 import type { ABTestVariant } from "../types/ab-test";
 import { VariantAssignmentStrategy } from "../types/ab-test";
 import { PatternError, ErrorCode } from "../types/errors";
+import { GlobalStorage } from "../common/storage";
 
 describe("A/B Testing Pattern", () => {
+  beforeEach(async () => {
+    await GlobalStorage.clearAll();
+  });
   describe("abTest", () => {
     it("should select and execute a variant", async () => {
       const variants: ABTestVariant<string>[] = [

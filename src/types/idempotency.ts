@@ -3,6 +3,7 @@
  */
 
 import { AsyncFunction, Logger } from "./common";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
  * Idempotency record status
@@ -83,9 +84,9 @@ export interface IdempotencyRecord<T = any> {
  * Interface for custom idempotency store
  */
 export interface IdempotencyStore<T = any> {
-  get(key: string): Promise<IdempotencyRecord<T> | null>;
+  getRecord(key: string): Promise<IdempotencyRecord<T> | null>;
   set(key: string, record: IdempotencyRecord<T>): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: string): Promise<boolean>;
   clear(): Promise<void>;
 }
 
@@ -149,71 +150,56 @@ export interface IdempotencyOptions<TResult = any> {
 }
 
 /**
- * In-memory store implementation
+ * In-memory store implementation using GlobalStorage
  */
 export class InMemoryStore<T = any> implements IdempotencyStore<T> {
-  private store = new Map<string, IdempotencyRecord<T>>();
-  private cleanupTimer: NodeJS.Timeout | null = null;
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.IDEMPOTENCY;
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async get(key: string): Promise<IdempotencyRecord<T> | null> {
-    const record = this.store.get(key);
+  constructor() {
+    this.storage = GlobalStorage.getInstance();
+  }
+
+  async getRecord(key: string): Promise<IdempotencyRecord<T> | null> {
+    const record = await this.storage.get<IdempotencyRecord<T>>(this.namespace, key);
     if (!record) return null;
 
-    // Check expiration
+    // Check expiration using the record's own expiresAt
     if (Date.now() > record.expiresAt) {
-      this.store.delete(key);
+      await this.storage.delete(this.namespace, key);
       return null;
     }
 
     return record;
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async set(key: string, record: IdempotencyRecord<T>): Promise<void> {
-    this.store.set(key, record);
+    // Store record without additional TTL wrapper since record has its own expiresAt
+    await this.storage.set(this.namespace, key, record);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async delete(key: string): Promise<void> {
-    this.store.delete(key);
+  async delete(key: string): Promise<boolean> {
+    return this.storage.delete(this.namespace, key);
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async clear(): Promise<void> {
-    this.store.clear();
+    await this.storage.clear(this.namespace);
   }
 
   /**
    * Start automatic cleanup of expired entries
    */
-  startCleanup(intervalMs: number = 60000): void {
-    // Prevent multiple cleanup timers
-    if (this.cleanupTimer) {
-      return;
-    }
-
-    this.cleanupTimer = setInterval(() => {
-      const now = Date.now();
-      for (const [key, record] of this.store.entries()) {
-        if (now > record.expiresAt) {
-          this.store.delete(key);
-        }
-      }
-    }, intervalMs);
-
-    // Allow Node.js to exit even if timer is running
-    this.cleanupTimer.unref();
+  startCleanup(_intervalMs?: number): void {
+    // Cleanup is handled globally by GlobalStorage
+    // This method is kept for backward compatibility
   }
 
   /**
    * Stop automatic cleanup
    */
   stopCleanup(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
+    // Cleanup is handled globally by GlobalStorage
+    // This method is kept for backward compatibility
   }
 }
 

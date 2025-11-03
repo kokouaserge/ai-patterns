@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { costTracking, createCostTracker, InMemoryCostStorage } from "./cost-tracking";
 import type { CostTrackingConfig } from "../types/cost-tracking";
 import { PatternError, ErrorCode } from "../types/errors";
+import { GlobalStorage } from "../common/storage";
 
 describe("Cost Tracking Pattern", () => {
+  beforeEach(async () => {
+    await GlobalStorage.clearAll();
+  });
   describe("costTracking", () => {
     it("should track cost correctly", async () => {
       const result = await costTracking({

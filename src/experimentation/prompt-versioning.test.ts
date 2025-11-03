@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { versionedPrompt, InMemoryPromptVersionStorage } from "./prompt-versioning";
 import type { PromptVersion } from "../types/prompt-versioning";
 import { PatternError, ErrorCode } from "../types/errors";
+import { GlobalStorage } from "../common/storage";
 
 describe("Prompt Versioning Pattern", () => {
+  beforeEach(async () => {
+    await GlobalStorage.clearAll();
+  });
   describe("versionedPrompt", () => {
     it("should select and execute an active version", async () => {
       const versions: Record<string, PromptVersion> = {

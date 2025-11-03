@@ -37,28 +37,42 @@ import type {
 import { VariantAssignmentStrategy } from "../types/ab-test";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * Simple in-memory storage for sticky assignments
+ * Simple in-memory storage for sticky assignments using GlobalStorage
  */
 class InMemoryAssignmentStorage {
-  private store = new Map<string, string>();
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.AB_TEST;
+
+  constructor() {
+    this.storage = GlobalStorage.getInstance();
+  }
 
   async get(userId: string, experimentId: string): Promise<string | null> {
     const key = `${experimentId}:${userId}`;
-    return this.store.get(key) ?? null;
+    const value = await this.storage.get<string>(this.namespace, key);
+    return value ?? null;
   }
 
   async set(userId: string, experimentId: string, variantName: string): Promise<void> {
     const key = `${experimentId}:${userId}`;
-    this.store.set(key, variantName);
+    await this.storage.set(this.namespace, key, variantName);
   }
 }
 
 /**
- * Default in-memory storage instance
+ * Default in-memory storage instance (lazy initialization)
  */
-const defaultStorage = new InMemoryAssignmentStorage();
+let defaultStorage: InMemoryAssignmentStorage | null = null;
+
+function getDefaultStorage(): InMemoryAssignmentStorage {
+  if (!defaultStorage) {
+    defaultStorage = new InMemoryAssignmentStorage();
+  }
+  return defaultStorage;
+}
 
 /**
  * Hash function for consistent variant assignment
@@ -124,7 +138,7 @@ export async function abTest<TResult = any>(
     userId,
     experimentId = "default",
     strategy = VariantAssignmentStrategy.WEIGHTED,
-    storage = defaultStorage,
+    storage = getDefaultStorage(),
     onVariantSelected,
     onSuccess,
     onError,

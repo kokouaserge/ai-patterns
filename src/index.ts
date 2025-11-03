@@ -7,6 +7,27 @@
 // ===== All Types =====
 export * from "./types";
 
+// ===== Common Utilities =====
+export {
+  GlobalStorage,
+  StorageNamespace,
+  type GlobalStorageOptions,
+  type StorageEntry,
+  // Legacy exports for backward compatibility
+  InMemoryStorage,
+  InMemoryKeyValueStorage,
+} from "./common/storage";
+
+// Import for helper function
+import { GlobalStorage as GS } from "./common/storage";
+
+/**
+ * Reset global storage for testing
+ */
+export async function resetGlobalStorage(): Promise<void> {
+  await GS.clearAll();
+}
+
 // ===== Resilience Patterns =====
 
 // Retry Pattern

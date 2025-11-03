@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { idempotent, resetGlobalIdempotencyStore } from './idempotency';
+import { GlobalStorage } from '../common/storage';
 
 describe('idempotency', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    await GlobalStorage.clearAll();
     resetGlobalIdempotencyStore();
   });
 

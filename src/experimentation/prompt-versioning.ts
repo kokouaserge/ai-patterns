@@ -45,21 +45,38 @@ import type {
 } from "../types/prompt-versioning";
 import { defaultLogger } from "../types/common";
 import { PatternError, ErrorCode } from "../types/errors";
+import { GlobalStorage, StorageNamespace } from "../common/storage";
 
 /**
- * Simple in-memory storage for prompt version metrics
+ * Simple in-memory storage for prompt version metrics using GlobalStorage
  */
 export class InMemoryPromptVersionStorage implements PromptVersionStorage {
-  private metrics = new Map<string, PromptVersionMetrics>();
-  private activeVersions = new Map<string, string>();
-  private history = new Map<string, string[]>();
+  private storage: GlobalStorage;
+  private readonly namespace = StorageNamespace.PROMPT_VERSION;
+
+  constructor() {
+    this.storage = GlobalStorage.getInstance();
+  }
+
+  private getMetricsKey(promptId: string, version: string): string {
+    return `metrics:${promptId}:${version}`;
+  }
+
+  private getActiveVersionKey(promptId: string): string {
+    return `active:${promptId}`;
+  }
+
+  private getHistoryKey(promptId: string): string {
+    return `history:${promptId}`;
+  }
 
   async getMetrics(
     promptId: string,
     version: string
   ): Promise<PromptVersionMetrics | null> {
-    const key = `${promptId}:${version}`;
-    return this.metrics.get(key) ?? null;
+    const key = this.getMetricsKey(promptId, version);
+    const value = await this.storage.get<PromptVersionMetrics>(this.namespace, key);
+    return value ?? null;
   }
 
   async updateMetrics(
@@ -67,36 +84,51 @@ export class InMemoryPromptVersionStorage implements PromptVersionStorage {
     version: string,
     metrics: Partial<PromptVersionMetrics>
   ): Promise<void> {
-    const key = `${promptId}:${version}`;
-    const existing = this.metrics.get(key) || {};
-    this.metrics.set(key, { ...existing, ...metrics });
+    const key = this.getMetricsKey(promptId, version);
+    const existing = await this.storage.get<PromptVersionMetrics>(this.namespace, key);
+    const baseMetrics = existing || ({} as PromptVersionMetrics);
+    await this.storage.set(this.namespace, key, { ...baseMetrics, ...metrics } as PromptVersionMetrics);
   }
 
   async getActiveVersion(promptId: string): Promise<string | null> {
-    return this.activeVersions.get(promptId) ?? null;
+    const key = this.getActiveVersionKey(promptId);
+    const value = await this.storage.get<string>(this.namespace, key);
+    return value ?? null;
   }
 
   async setActiveVersion(promptId: string, version: string): Promise<void> {
-    const previous = this.activeVersions.get(promptId);
-    this.activeVersions.set(promptId, version);
+    const activeKey = this.getActiveVersionKey(promptId);
+    const historyKey = this.getHistoryKey(promptId);
+
+    const previous = await this.storage.get<string>(this.namespace, activeKey);
+    await this.storage.set(this.namespace, activeKey, version);
 
     // Update history
-    const versions = this.history.get(promptId) || [];
+    const versions = await this.storage.get<string[]>(this.namespace, historyKey) || [];
     if (previous && previous !== version) {
       versions.push(previous);
     }
-    this.history.set(promptId, versions);
+    await this.storage.set(this.namespace, historyKey, versions);
   }
 
   async getVersionHistory(promptId: string): Promise<string[]> {
-    return this.history.get(promptId) || [];
+    const key = this.getHistoryKey(promptId);
+    const value = await this.storage.get<string[]>(this.namespace, key);
+    return value || [];
   }
 }
 
 /**
- * Default storage instance
+ * Default storage instance (lazy initialization)
  */
-const defaultStorage = new InMemoryPromptVersionStorage();
+let defaultStorage: InMemoryPromptVersionStorage | null = null;
+
+function getDefaultStorage(): InMemoryPromptVersionStorage {
+  if (!defaultStorage) {
+    defaultStorage = new InMemoryPromptVersionStorage();
+  }
+  return defaultStorage;
+}
 
 /**
  * Select a version based on rollout percentages
@@ -271,7 +303,7 @@ export async function versionedPrompt<TResult = any>(
     onSuccess,
     onError,
     logger = defaultLogger,
-    storage = defaultStorage,
+    storage = getDefaultStorage(),
   } = config;
 
   // Validate versions

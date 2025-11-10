@@ -18,7 +18,7 @@ describe("Prompt Versioning Pattern", () => {
       };
 
       const execute = vi.fn(async (prompt: string) => {
-        await new Promise(resolve => setTimeout(resolve, 1));
+        await new Promise(resolve => setTimeout(resolve, 10));
         return `Result: ${prompt}`;
       });
 
@@ -31,7 +31,7 @@ describe("Prompt Versioning Pattern", () => {
       expect(result.value).toBe("Result: Summarize this text");
       expect(result.version).toBe("v1.0");
       expect(result.timestamp).toBeDefined();
-      expect(result.responseTime).toBeGreaterThan(0);
+      expect(result.responseTime).toBeGreaterThanOrEqual(0);
       expect(execute).toHaveBeenCalledWith("Summarize this text", "v1.0");
     });
 

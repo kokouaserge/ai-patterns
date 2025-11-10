@@ -178,13 +178,31 @@ withCircuitBreaker({
 
 ### withRateLimiter
 
-Control request rate to avoid overwhelming services.
+Control request rate to avoid overwhelming services. **Note: This creates a GLOBAL rate limiter** that counts all requests together, regardless of which function is being executed.
 
 ```typescript
 withRateLimiter({
-  requests: 10,
-  window: 1000
+  maxRequests: 10,
+  windowMs: 1000,
+  strategy: RateLimitStrategy.SLIDING_WINDOW
 })
+```
+
+**Important behavior:**
+- Maintains state across ALL calls to the composed function
+- Counts requests globally, not per-function
+- Ideal for enforcing API rate limits across different operations
+
+**Example:**
+```typescript
+const robustApi = compose([
+  withRateLimiter({ maxRequests: 5, windowMs: 10000 })
+]);
+
+// All these requests share the same rate limit counter
+await robustApi(fetchUsers, undefined);   // Count: 1/5
+await robustApi(fetchProducts, undefined); // Count: 2/5
+await robustApi(fetchOrders, undefined);   // Count: 3/5
 ```
 
 **[→ Rate Limiter Pattern Documentation](./rate-limiter.md)**

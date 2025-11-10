@@ -318,6 +318,14 @@ export class RateLimiter<TResult = any, TArgs extends any[] = any[]> {
   reset(): void {
     this.limiter.reset();
   }
+
+  /**
+   * Get the internal limiter for direct access (used by middleware)
+   * @internal
+   */
+  getLimiter(): Limiter {
+    return this.limiter;
+  }
 }
 
 /**

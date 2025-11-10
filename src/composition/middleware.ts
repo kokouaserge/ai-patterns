@@ -166,7 +166,7 @@ export function rateLimiterMiddleware<TInput = any, TOutput = any>(
   return (next) => {
     return async (input) => {
       // Check if we're allowed to proceed based on global rate limit
-      const { allowed, retryAfter, remaining } = await internalLimiter.acquire();
+      const { allowed, retryAfter } = await internalLimiter.acquire();
 
       if (!allowed) {
         const logger = options.logger;
@@ -182,13 +182,8 @@ export function rateLimiterMiddleware<TInput = any, TOutput = any>(
       }
 
       // Execute the actual function with the current input
-      try {
-        return await next(input);
-      } catch (error) {
-        // If execution fails, we still count it against the rate limit
-        // (the token/slot has been consumed)
-        throw error;
-      }
+      // Note: If execution fails, the rate limit token has already been consumed
+      return await next(input);
     };
   };
 }

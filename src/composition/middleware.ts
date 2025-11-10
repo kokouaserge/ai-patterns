@@ -133,27 +133,62 @@ export function circuitBreakerMiddleware<TInput = any, TOutput = any>(
 /**
  * Rate limiter middleware - wraps the RateLimiter class
  *
- * Note: Maintains state across calls. Create once and reuse.
+ * Note: Maintains GLOBAL state across all calls. This rate limiter counts
+ * all requests regardless of which function is being executed, making it
+ * ideal for enforcing API rate limits across different operations.
+ *
+ * @example
+ * ```typescript
+ * // This rate limiter will count ALL requests together
+ * const robustApi = compose([withRateLimiter({ maxRequests: 5, windowMs: 10000 })]);
+ *
+ * // These all share the same rate limit counter
+ * await robustApi(fetchUsers, undefined);   // Count: 1/5
+ * await robustApi(fetchProducts, undefined); // Count: 2/5
+ * await robustApi(fetchOrders, undefined);   // Count: 3/5
+ * ```
  */
 export function rateLimiterMiddleware<TInput = any, TOutput = any>(
   options: Omit<RateLimiterOptions<TOutput>, "execute">
 ): Middleware<TInput, TOutput> {
-  let limiter: RateLimiter<TOutput> | null = null;
+  // Create a global rate limiter instance that will be shared across all functions
+  // We use a dummy function since we'll override the execution logic
+  const limiter = new RateLimiter(
+    async () => {
+      throw new Error("This should never be called directly");
+    },
+    options
+  );
+
+  // Get direct access to the internal limiter for acquire() calls
+  const internalLimiter = limiter.getLimiter();
 
   return (next) => {
-    if (!limiter) {
-      limiter = new RateLimiter(
-        async (input: TInput) => await next(input),
-        options
-      );
-    }
-
     return async (input) => {
-      const result = await limiter!.execute(input);
-      if (!result.allowed) {
-        throw new Error(`Rate limit exceeded. Retry after ${result.retryAfter}ms`);
+      // Check if we're allowed to proceed based on global rate limit
+      const { allowed, retryAfter, remaining } = await internalLimiter.acquire();
+
+      if (!allowed) {
+        const logger = options.logger;
+        if (logger) {
+          logger.warn(`Rate limit reached. Retry in ${retryAfter}ms`);
+        }
+
+        if (options.onLimitReached) {
+          options.onLimitReached(retryAfter);
+        }
+
+        throw new Error(`Rate limit exceeded. Retry after ${retryAfter}ms`);
       }
-      return result.value!;
+
+      // Execute the actual function with the current input
+      try {
+        return await next(input);
+      } catch (error) {
+        // If execution fails, we still count it against the rate limit
+        // (the token/slot has been consumed)
+        throw error;
+      }
     };
   };
 }
